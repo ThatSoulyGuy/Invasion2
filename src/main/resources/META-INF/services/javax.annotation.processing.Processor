@@ -1,0 +1,3 @@
+com.thatsoulyguy.invasion2.annotation.processor.CustomConstructorAnnotationProcessor
+com.thatsoulyguy.invasion2.annotation.processor.ManagerAnnotationProcessor
+com.thatsoulyguy.invasion2.annotation.processor.StaticAnnotationProcessor
