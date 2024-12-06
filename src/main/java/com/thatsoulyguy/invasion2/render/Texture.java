@@ -2,7 +2,9 @@ package com.thatsoulyguy.invasion2.render;
 
 import com.thatsoulyguy.invasion2.annotation.CustomConstructor;
 import com.thatsoulyguy.invasion2.annotation.EffectivelyNotNull;
+import com.thatsoulyguy.invasion2.system.Component;
 import com.thatsoulyguy.invasion2.util.AssetPath;
+import com.thatsoulyguy.invasion2.util.ManagerLinkedClass;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector2i;
@@ -16,7 +18,7 @@ import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 
 @CustomConstructor("create")
-public class Texture
+public class Texture extends Component implements ManagerLinkedClass
 {
     private @EffectivelyNotNull String name;
     private @EffectivelyNotNull AssetPath localPath;
@@ -54,7 +56,8 @@ public class Texture
         GL41.glBindTexture(GL41.GL_TEXTURE_2D, 0);
     }
 
-    private void generate()
+    @Override
+    public void onLoad()
     {
         try (MemoryStack stack = MemoryStack.stackPush())
         {
@@ -151,6 +154,18 @@ public class Texture
         return null;
     }
 
+    @Override
+    public @NotNull Class<?> getManagingClass()
+    {
+        return TextureManager.class;
+    }
+
+    @Override
+    public @NotNull String getManagedItem()
+    {
+        return name;
+    }
+
     public void uninitialize_NoOverride()
     {
         if (textureId != 0)
@@ -170,7 +185,7 @@ public class Texture
         result.filter = filter;
         result.wrapping = wrapping;
 
-        result.generate();
+        result.onLoad();
 
         return result;
     }

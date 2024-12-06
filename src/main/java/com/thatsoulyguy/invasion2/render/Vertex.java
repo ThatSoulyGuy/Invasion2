@@ -6,8 +6,10 @@ import org.jetbrains.annotations.NotNull;
 import org.joml.Vector2f;
 import org.joml.Vector3f;
 
+import java.io.Serializable;
+
 @CustomConstructor("create")
-public class Vertex
+public class Vertex implements Serializable
 {
     private @EffectivelyNotNull Vector3f position;
     private @EffectivelyNotNull Vector3f color;

@@ -5,6 +5,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.Objects;
@@ -71,5 +72,39 @@ public class FileHelper
         }
 
         return result.toString();
+    }
+
+    public static @NotNull String getPersistentDataPath(@NotNull String appName)
+    {
+        try
+        {
+            String userHome = System.getProperty("user.home");
+            String os = System.getProperty("os.name").toLowerCase();
+            String path;
+
+            if (os.contains("win"))
+            {
+                String appData = System.getenv("APPDATA");
+                path = appData != null ? appData + File.separator + appName : userHome + File.separator + appName;
+            }
+            else if (os.contains("mac"))
+                path = userHome + "/Library/Application Support/" + appName;
+            else
+                path = userHome + "/.local/share/" + appName;
+
+            File dir = new File(path);
+
+            if (!dir.exists())
+            {
+                if (!dir.mkdirs())
+                    throw new IOException("Failed to create directory: " + path);
+            }
+
+            return dir.getAbsolutePath();
+        }
+        catch (Exception exception)
+        {
+            throw new RuntimeException(exception);
+        }
     }
 }

@@ -4,8 +4,10 @@ import com.thatsoulyguy.invasion2.annotation.CustomConstructor;
 import com.thatsoulyguy.invasion2.annotation.EffectivelyNotNull;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.Serializable;
+
 @CustomConstructor("create")
-public class AssetPath
+public class AssetPath implements Serializable
 {
     private @EffectivelyNotNull String domain;
     private @EffectivelyNotNull String localPath;

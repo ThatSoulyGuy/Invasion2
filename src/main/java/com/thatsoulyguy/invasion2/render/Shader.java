@@ -2,8 +2,10 @@ package com.thatsoulyguy.invasion2.render;
 
 import com.thatsoulyguy.invasion2.annotation.CustomConstructor;
 import com.thatsoulyguy.invasion2.annotation.EffectivelyNotNull;
+import com.thatsoulyguy.invasion2.system.Component;
 import com.thatsoulyguy.invasion2.util.AssetPath;
 import com.thatsoulyguy.invasion2.util.FileHelper;
+import com.thatsoulyguy.invasion2.util.ManagerLinkedClass;
 import org.jetbrains.annotations.NotNull;
 import org.joml.Matrix4f;
 import org.joml.Vector2f;
@@ -15,7 +17,7 @@ import org.lwjgl.opengl.GL41;
 import java.nio.FloatBuffer;
 
 @CustomConstructor("create")
-public class Shader
+public class Shader extends Component implements ManagerLinkedClass
 {
     private @EffectivelyNotNull String name;
     private @EffectivelyNotNull AssetPath localPath;
@@ -76,7 +78,8 @@ public class Shader
         GL41.glUniformMatrix4fv(GL41.glGetUniformLocation(program, name), false, buffer);
     }
 
-    private void generate()
+    @Override
+    public void onLoad()
     {
         int vertex = GL41.glCreateShader(GL41.GL_VERTEX_SHADER);
         GL41.glShaderSource(vertex, vertexSource);
@@ -125,6 +128,18 @@ public class Shader
         return fragmentPath;
     }
 
+    @Override
+    public @NotNull Class<?> getManagingClass()
+    {
+        return ShaderManager.class;
+    }
+
+    @Override
+    public @NotNull String getManagedItem()
+    {
+        return name;
+    }
+
     public void uninitialize_NoOverride()
     {
         GL41.glDeleteProgram(program);
@@ -141,7 +156,7 @@ public class Shader
         result.vertexSource = FileHelper.readFile(result.vertexPath);
         result.fragmentSource = FileHelper.readFile(result.fragmentPath);
 
-        result.generate();
+        result.onLoad();
 
         return result;
     }

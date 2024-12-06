@@ -3,6 +3,7 @@ package com.thatsoulyguy.invasion2.render;
 import com.thatsoulyguy.invasion2.annotation.CustomConstructor;
 import com.thatsoulyguy.invasion2.annotation.EffectivelyNotNull;
 import com.thatsoulyguy.invasion2.math.Transform;
+import com.thatsoulyguy.invasion2.system.Component;
 import org.jetbrains.annotations.NotNull;
 import org.joml.Vector2f;
 import org.joml.Vector3f;
@@ -17,13 +18,8 @@ import java.util.List;
 import java.util.function.Function;
 
 @CustomConstructor("create")
-public class Mesh
+public class Mesh extends Component
 {
-    private @EffectivelyNotNull Shader shader;
-    private @EffectivelyNotNull Texture texture;
-
-    private @EffectivelyNotNull Transform transform;
-
     private final @NotNull List<Vertex> vertices = Collections.synchronizedList(new ArrayList<>());
     private final @NotNull List<Integer> indices = Collections.synchronizedList(new ArrayList<>());
 
@@ -31,7 +27,8 @@ public class Mesh
 
     private Mesh() { }
 
-    public void generate()
+    @Override
+    public void onLoad()
     {
         vao = GL41.glGenVertexArrays();
         GL41.glBindVertexArray(vao);
@@ -65,8 +62,18 @@ public class Mesh
         GL41.glBufferData(GL41.GL_ELEMENT_ARRAY_BUFFER, toBuffer(indices), GL41.GL_STATIC_DRAW);
     }
 
+    @Override
     public void render()
     {
+        Texture texture = getGameObject().getComponent(Texture.class);
+        Shader shader = getGameObject().getComponent(Shader.class);
+
+        if (texture == null || shader == null)
+        {
+            System.err.println("Shader or Texture component(s) missing from GameObject: '" + getGameObject().getName() + "'!");
+            return;
+        }
+
         GL41.glBindVertexArray(vao);
 
         GL41.glEnableVertexAttribArray(0);
@@ -78,7 +85,7 @@ public class Mesh
 
         shader.bind();
 
-        shader.setShaderUniform("model", transform.getModelMatrix());
+        shader.setShaderUniform("model", getGameObject().getTransform().getModelMatrix());
 
         GL41.glDrawElements(GL41.GL_TRIANGLES, indices.size(), GL41.GL_UNSIGNED_INT, 0);
 
@@ -96,11 +103,6 @@ public class Mesh
 
         if (error != GL41.GL_NO_ERROR)
             System.err.println("OpenGL error: " + error);
-    }
-
-    public @NotNull Transform getTransform()
-    {
-        return transform;
     }
 
     private static <T> FloatBuffer toBuffer(List<Vertex> vertices, Function<Vertex, T> extractor)
@@ -149,6 +151,7 @@ public class Mesh
         return buffer;
     }
 
+    @Override
     public void uninitialize()
     {
         GL41.glDeleteVertexArrays(vao);
@@ -159,14 +162,9 @@ public class Mesh
         GL41.glDeleteBuffers(ibo);
     }
 
-    public static @NotNull Mesh create(@NotNull Shader shader, @NotNull Texture texture, @NotNull List<Vertex> vertices, @NotNull List<Integer> indices)
+    public static @NotNull Mesh create(@NotNull List<Vertex> vertices, @NotNull List<Integer> indices)
     {
         Mesh result = new Mesh();
-
-        result.shader = shader;
-        result.texture = texture;
-
-        result.transform = Transform.create(new Vector3f(0, 0, 0), new Vector3f(0, 0, 0), new Vector3f(1, 1, 1));
 
         result.vertices.clear();
         result.indices.clear();

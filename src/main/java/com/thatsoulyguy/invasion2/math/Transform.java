@@ -2,13 +2,14 @@ package com.thatsoulyguy.invasion2.math;
 
 import com.thatsoulyguy.invasion2.annotation.CustomConstructor;
 import com.thatsoulyguy.invasion2.annotation.EffectivelyNotNull;
+import com.thatsoulyguy.invasion2.system.Component;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
 @CustomConstructor("create")
-public class Transform
+public class Transform extends Component
 {
     private @EffectivelyNotNull Vector3f position;
     private @EffectivelyNotNull Vector3f rotation;

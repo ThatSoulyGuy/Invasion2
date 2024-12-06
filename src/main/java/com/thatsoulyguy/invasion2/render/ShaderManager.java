@@ -43,5 +43,7 @@ public class ShaderManager
     public static void uninitialize()
     {
         registeredShaders.values().forEach(Shader::uninitialize_NoOverride);
+
+        registeredShaders.clear();
     }
 }

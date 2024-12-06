@@ -3,17 +3,25 @@ package com.thatsoulyguy.invasion2;
 import com.thatsoulyguy.invasion2.annotation.EffectivelyNotNull;
 import com.thatsoulyguy.invasion2.core.Window;
 import com.thatsoulyguy.invasion2.render.*;
+import com.thatsoulyguy.invasion2.system.GameObject;
+import com.thatsoulyguy.invasion2.system.GameObjectManager;
+import com.thatsoulyguy.invasion2.system.LevelManager;
 import com.thatsoulyguy.invasion2.util.AssetPath;
+import com.thatsoulyguy.invasion2.util.FileHelper;
 import org.joml.Vector2f;
 import org.joml.Vector2i;
 import org.joml.Vector3f;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class Invasion2
 {
-    private @EffectivelyNotNull Mesh mesh;
+    private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
+
+    private @EffectivelyNotNull GameObject cube;
 
     public void preInitialize()
     {
@@ -25,7 +33,16 @@ public class Invasion2
 
     public void initialize()
     {
-        mesh = Mesh.create(Objects.requireNonNull(ShaderManager.get("default")), Objects.requireNonNull(TextureManager.get("debug")),
+        LevelManager.loadLevelFromFile(FileHelper.getPersistentDataPath("Invasion2") + "/overworld.bin");
+
+        /*
+        LevelManager.createLevel("overworld", true);
+        cube = GameObject.create("cube");
+
+        cube.addComponent(Objects.requireNonNull(ShaderManager.get("default")));
+        cube.addComponent(Objects.requireNonNull(TextureManager.get("debug")));
+
+        cube.addComponent(Mesh.create(
         List.of
         (
             Vertex.create(new Vector3f(-0.5f,  0.5f, 0.0f), new Vector3f(1.0f, 1.0f, 1.0f), new Vector3f(0.0f, 0.0f, 1.0f), new Vector2f(0.0f, 0.0f)),
@@ -37,28 +54,31 @@ public class Invasion2
         (
             0, 1, 2,
             2, 3, 0
-        ));
+        )));
 
-        mesh.generate();
+        Objects.requireNonNull(cube.getComponent(Mesh.class)).onLoad();
+        //*/
     }
 
     public void update()
     {
-
+        GameObjectManager.getAll().forEach(gameObject -> executor.submit(gameObject::update));
     }
 
     public void render()
     {
         Window.preRender();
 
-        mesh.render();
+        GameObjectManager.getAll().forEach(GameObject::render);
 
         Window.postRender();
     }
 
     public void uninitialize()
     {
-        mesh.uninitialize();
+        LevelManager.saveLevel("overworld", FileHelper.getPersistentDataPath("Invasion2"));
+
+        GameObjectManager.uninitialize();
 
         ShaderManager.uninitialize();
         TextureManager.uninitialize();

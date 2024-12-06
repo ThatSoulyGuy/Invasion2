@@ -43,5 +43,7 @@ public class TextureManager
     public static void uninitialize()
     {
         registeredTextures.values().forEach(Texture::uninitialize_NoOverride);
+
+        registeredTextures.clear();
     }
 }
