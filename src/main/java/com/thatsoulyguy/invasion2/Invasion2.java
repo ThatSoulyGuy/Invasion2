@@ -5,8 +5,6 @@ import com.thatsoulyguy.invasion2.core.Window;
 import com.thatsoulyguy.invasion2.entity.Entity;
 import com.thatsoulyguy.invasion2.entity.entities.EntityPlayer;
 import com.thatsoulyguy.invasion2.input.InputManager;
-import com.thatsoulyguy.invasion2.input.KeyCode;
-import com.thatsoulyguy.invasion2.input.KeyState;
 import com.thatsoulyguy.invasion2.render.*;
 import com.thatsoulyguy.invasion2.system.GameObject;
 import com.thatsoulyguy.invasion2.system.GameObjectManager;
@@ -16,7 +14,6 @@ import com.thatsoulyguy.invasion2.util.FileHelper;
 import org.joml.Vector2f;
 import org.joml.Vector2i;
 import org.joml.Vector3f;
-import org.lwjgl.glfw.GLFW;
 
 import java.awt.*;
 import java.util.List;
