@@ -54,9 +54,8 @@ public class Invasion2
 
     public void initialize()
     {
-        LevelManager.loadLevelFromFile(FileHelper.getPersistentDataPath("Invasion2") + "/overworld.bin");
+        //LevelManager.loadLevel(FileHelper.getPersistentDataPath("Invasion2") + "/overworld");
 
-        /*
         LevelManager.createLevel("overworld", true);
 
         player = GameObject.create("player");
@@ -83,8 +82,6 @@ public class Invasion2
         )));
 
         Objects.requireNonNull(cube.getComponent(Mesh.class)).onLoad();
-
-         */
     }
 
     public void update()
@@ -105,7 +102,7 @@ public class Invasion2
 
     public void uninitialize()
     {
-        //LevelManager.saveLevel("overworld", FileHelper.getPersistentDataPath("Invasion2"));
+        LevelManager.saveLevel("overworld", FileHelper.getPersistentDataPath("Invasion2"));
 
         GameObjectManager.uninitialize();
 

@@ -73,12 +73,12 @@ public class GameObject implements Serializable
     public void setParent(@Nullable GameObject parent)
     {
         if (this.parent != null)
-            this.parent.children.remove(this);
+            this.parent.children.remove(name);
 
         this.parent = parent;
 
         if (parent != null && !parent.children.containsValue(this))
-            parent.children.putIfAbsent(name, this);
+            parent.children.put(name, this);
 
         if (parent != null)
             getTransform().setParent(parent.getTransform());
@@ -93,7 +93,7 @@ public class GameObject implements Serializable
 
         GameObjectManager.unregister(child.getName());
 
-        children.putIfAbsent(child.name, child);
+        children.put(child.name, child);
         child.setParent(this);
     }
 
@@ -135,166 +135,130 @@ public class GameObject implements Serializable
         }
     }
 
-    public void saveToStream(@NotNull DataOutputStream dos) throws IOException
+    public void save(@NotNull File file)
     {
-        dos.writeUTF(name);
-
-        dos.writeInt(componentMap.size());
-
-        for (Component component : componentMap.values())
+        try (FileOutputStream fileOutputStream = new FileOutputStream(file))
         {
-            String componentClassName = component.getClass().getName();
-            dos.writeUTF(componentClassName);
+            ObjectOutputStream objectOutputStream = new ObjectOutputStream(fileOutputStream);
 
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            File childrenDirectory = new File(file.getAbsolutePath().replace(".bin", "/"));
 
-            try (ObjectOutputStream oos = new ObjectOutputStream(baos))
+            objectOutputStream.writeUTF(name);
+
+            objectOutputStream.writeInt(componentMap.size());
+            objectOutputStream.writeInt(children.size());
+
+            componentMap.values().forEach((component ->
             {
-                oos.writeObject(component);
-                oos.flush();
+                try
+                {
+                    System.out.println("Saving component '" + component.getClass().getSimpleName() + "' on game object '" + name + "'...");
 
-                byte[] componentData = baos.toByteArray();
+                    objectOutputStream.writeObject(component);
+                }
+                catch (IOException e)
+                {
+                    throw new RuntimeException(e);
+                }
+            }));
 
-                dos.writeInt(componentData.length);
-                dos.write(componentData);
+            if (!children.isEmpty())
+            {
+                if (!childrenDirectory.exists())
+                    childrenDirectory.mkdirs();
+
+                children.values().forEach((child ->
+                {
+                    try
+                    {
+                        objectOutputStream.writeUTF(child.name);
+                    }
+                    catch (IOException e)
+                    {
+                        throw new RuntimeException(e);
+                    }
+                }));
             }
+
+            System.out.println("Saved game object '" + name + "' at position/rotation/scale: " + getTransform());
+
+            if (!children.isEmpty())
+                children.values().forEach((child -> child.save(new File(childrenDirectory, child.name + ".bin"))));
+
+            objectOutputStream.close();
         }
-
-        dos.writeInt(children.size());
-
-        for (GameObject child : children.values())
-            dos.writeUTF(child.getName());
+        catch (Exception exception)
+        {
+            System.err.println("Failed to serialize game object '" + name + "'! " + exception.getMessage());
+        }
     }
 
-    public static @NotNull GameObject loadFromStream(@NotNull DataInputStream dis, @NotNull File parentDirectory) throws IOException, ClassNotFoundException
+    public static @NotNull GameObject load(@NotNull File file)
     {
-        String gameObjectName = dis.readUTF();
-        GameObject gameObject = GameObject.create(gameObjectName);
+        GameObject result = new GameObject();
 
-        int componentCount = dis.readInt();
-        for (int i = 0; i < componentCount; i++)
+        try (FileInputStream fileInputStream = new FileInputStream(file))
         {
-            String componentClassName = dis.readUTF();
+            ObjectInputStream objectInputStream = new ObjectInputStream(fileInputStream);
 
-            int componentDataLength = dis.readInt();
-            byte[] componentData = new byte[componentDataLength];
+            result.name = objectInputStream.readUTF();
 
-            dis.readFully(componentData);
+            System.out.println("Deserializing game object '" + result.name + "'...");
 
-            try (ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(componentData)))
+            int componentCount = objectInputStream.readInt();
+            int childrenCount = objectInputStream.readInt();
+
+            List<Component> components = new ArrayList<>();
+
+            for (int c = 0; c < componentCount; c++)
             {
-                Object obj = ois.readObject();
-                if (obj instanceof Component component)
+                Object object = objectInputStream.readObject();
+
+                if (object instanceof Component component)
                 {
                     if (component instanceof ManagerLinkedClass linkedClass)
-                    {
-                        try
-                        {
-                            Method getMethod = linkedClass.getManagingClass().getDeclaredMethod("get", String.class);
+                        component = (Component) linkedClass.getManagingClass().getMethod("get", String.class).invoke(null, linkedClass.getManagedItem());
 
-                            if (!getMethod.canAccess(null))
-                                getMethod.setAccessible(true);
+                    System.out.println("Deserialized component '" + component.getClass().getSimpleName() + "'.");
 
-                            boolean isStatic = Modifier.isStatic(getMethod.getModifiers());
-
-                            if (!isStatic)
-                                throw new NoSuchMethodException("Method 'get' in manager class was non-static! This shouldn't happen!");
-
-                            Object result = getMethod.invoke(null, linkedClass.getManagedItem());
-
-                            if (result instanceof Component)
-                            {
-                                component = (Component) result;
-                                System.out.println("Successfully linked component on Game Object: '" + gameObjectName + "'.");
-                            }
-                            else
-                                System.err.println("Method 'get' did not return a Component instance.");
-                        }
-                        catch (NoSuchMethodException e)
-                        {
-                            System.err.println("Method 'get(String)' not found in linked class '" + linkedClass.getManagingClass().getSimpleName() + "'.");
-                        }
-                        catch (IllegalAccessException e)
-                        {
-                            System.err.println("Cannot access method 'get(String)' in linked class '" + linkedClass.getManagingClass().getSimpleName() + "'.");
-                        }
-                        catch (InvocationTargetException e)
-                        {
-                            System.err.println("An exception occurred while invoking method 'get(String)' in linked class '" + linkedClass.getManagingClass().getSimpleName() + "'.");
-                        }
-                    }
-
-                    gameObject.addComponent(component);
-                    System.out.println("Added component: " + component.getClass().getName());
+                    components.add(component);
                 }
                 else
-                    System.err.println("Invalid component type: " + componentClassName);
+                    System.err.println("Non-component saved in components list!");
             }
-        }
 
-        int childrenCount = dis.readInt();
-
-        for (int i = 0; i < childrenCount; i++)
-        {
-            String childName = dis.readUTF();
-
-            File childDir = new File(parentDirectory, gameObjectName);
-            File childFile = new File(childDir, childName + ".bin");
-
-            if (childFile.exists())
+            for (Component component : components)
             {
-                GameObject child = GameObject.loadFromFile(childFile);
-
-                if (child != null)
-                    gameObject.addChild(child);
-                else
-                    System.err.println("Failed to load child GameObject: " + childName);
+                if (component instanceof Transform)
+                    result.addComponent(component);
             }
-            else
-                System.err.println("Child GameObject file does not exist: " + childFile.getAbsolutePath());
+
+            for (Component component : components)
+            {
+                if (component instanceof Transform)
+                    continue;
+
+                result.addComponent(component);
+            }
+
+            result.componentMap.values().forEach(Component::onLoad);
+
+            System.out.println("Deserialized game object '" + result.name + "' at position/rotation/scale: " + result.getTransform());
+
+            if (childrenCount > 0)
+            {
+                for (int c = 0; c < childrenCount; c++)
+                    result.addChild(GameObject.load(new File(file.getAbsolutePath().replace(".bin", "/"), objectInputStream.readUTF() + ".bin")));
+            }
+
+            objectInputStream.close();
         }
-
-        gameObject.componentMap.values().forEach(Component::onLoad);
-
-        return gameObject;
-    }
-
-    public void saveToFile(@NotNull File parentDirectory) throws IOException
-    {
-        parentDirectory = new File(parentDirectory.getAbsolutePath().replace(".bin", ""));
-        File gameObjectDirectory = new File(parentDirectory, name);
-
-        if (!parentDirectory.exists() && !(parentDirectory.toPath().getParent().endsWith(name) && parentDirectory.toPath().endsWith(name)))
+        catch (Exception exception)
         {
-            if (!parentDirectory.mkdirs())
-                throw new IOException("Failed to create directory for GameObject: " + name);
+            System.err.println("Failed to deserialize game object at '" + file.getAbsolutePath() + "'! " + exception.getMessage());
         }
 
-        File file = new File(parentDirectory.toPath().getParent().toFile(), name + ".bin");
-
-        try (DataOutputStream dos = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(file))))
-        {
-            saveToStream(dos);
-        }
-
-        for (GameObject child : children.values())
-            child.saveToFile(gameObjectDirectory);
-    }
-
-    public static @Nullable GameObject loadFromFile(@NotNull File file) throws IOException, ClassNotFoundException
-    {
-        if (!file.exists())
-        {
-            System.err.println("GameObject file does not exist: " + file.getAbsolutePath());
-            return null;
-        }
-
-        File parentDirectory = file.getParentFile();
-
-        try (DataInputStream dis = new DataInputStream(new BufferedInputStream(new FileInputStream(file))))
-        {
-            return loadFromStream(dis, parentDirectory);
-        }
+        return result;
     }
 
     private boolean isAncestor(@NotNull GameObject potentialAncestor)

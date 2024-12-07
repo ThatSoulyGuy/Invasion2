@@ -37,7 +37,7 @@ public class EntityPlayer extends Entity
         super.update();
 
         updateMouselook();
-        updateMovement();
+        //updateMovement();
     }
 
     @Override

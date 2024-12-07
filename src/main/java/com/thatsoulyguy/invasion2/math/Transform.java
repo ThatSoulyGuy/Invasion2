@@ -20,8 +20,7 @@ public class Transform extends Component
     private @EffectivelyNotNull Vector3f localRotation;
     private @EffectivelyNotNull Vector3f localScale;
 
-    private @Nullable Transform parent;
-    private final List<Transform> children = Collections.synchronizedList(new ArrayList<>());
+    private @Nullable transient Transform parent;
 
     private Transform() { }
 
@@ -77,18 +76,7 @@ public class Transform extends Component
 
     public void setParent(@Nullable Transform parent)
     {
-        if (this.parent != null)
-            this.parent.children.remove(this);
-
         this.parent = parent;
-
-        if (parent != null && !parent.children.contains(this))
-            parent.children.add(this);
-    }
-
-    public @NotNull List<Transform> getChildren()
-    {
-        return Collections.unmodifiableList(children);
     }
 
     public @NotNull Vector3f getForward()

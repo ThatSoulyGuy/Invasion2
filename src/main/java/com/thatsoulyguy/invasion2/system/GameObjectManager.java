@@ -22,13 +22,13 @@ public class GameObjectManager
         gameObjectMap.putIfAbsent(object.getName(), object);
 
         if (LevelManager.getCurrentLevel() != null)
-            LevelManager.addGameObjectToCurrentLevel(object);
+            LevelManager.getCurrentLevel().addGameObject(object.getName());
     }
 
     public static void unregister(@NotNull String name)
     {
-        if (gameObjectMap.containsKey(name))
-            LevelManager.removeGameObjectFromCurrentLevel(gameObjectMap.get(name));
+        if (gameObjectMap.containsKey(name) && LevelManager.getCurrentLevel() != null)
+            LevelManager.getCurrentLevel().removeGameObject(name);
 
         gameObjectMap.remove(name);
     }
