@@ -1,6 +1,7 @@
 package com.thatsoulyguy.invasion2.core;
 
 import com.thatsoulyguy.invasion2.annotation.Static;
+import com.thatsoulyguy.invasion2.input.InputManager;
 import org.jetbrains.annotations.NotNull;
 import org.joml.Vector2i;
 import org.lwjgl.glfw.GLFW;
@@ -37,6 +38,10 @@ public class Window
         GLFW.glfwMakeContextCurrent(handle);
 
         GLFW.glfwSetFramebufferSizeCallback(handle, (_, width, height) -> GL41.glViewport(0, 0, width, height));
+        GLFW.glfwSetKeyCallback(handle, InputManager.getKeyCallback());
+        GLFW.glfwSetMouseButtonCallback(handle, InputManager.getMouseButtonCallback());
+        GLFW.glfwSetCursorPosCallback(handle, InputManager.getMousePositionCallback());
+        GLFW.glfwSetScrollCallback(handle, InputManager.getScrollCallback());
 
         GLFW.glfwShowWindow(handle);
 
@@ -88,6 +93,11 @@ public class Window
 
             return new Vector2i(width.get(), height.get());
         }
+    }
+
+    public static long getHandle()
+    {
+        return handle;
     }
 
     public static void setPosition(@NotNull Vector2i position)

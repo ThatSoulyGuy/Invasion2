@@ -1,10 +1,9 @@
 package com.thatsoulyguy.invasion2.render;
 
 import com.thatsoulyguy.invasion2.annotation.CustomConstructor;
-import com.thatsoulyguy.invasion2.annotation.EffectivelyNotNull;
-import com.thatsoulyguy.invasion2.math.Transform;
 import com.thatsoulyguy.invasion2.system.Component;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.joml.Vector2f;
 import org.joml.Vector3f;
 import org.lwjgl.BufferUtils;
@@ -63,8 +62,11 @@ public class Mesh extends Component
     }
 
     @Override
-    public void render()
+    public void render(@Nullable Camera camera)
     {
+        if (camera == null)
+            return;
+
         Texture texture = getGameObject().getComponent(Texture.class);
         Shader shader = getGameObject().getComponent(Shader.class);
 
@@ -85,6 +87,8 @@ public class Mesh extends Component
 
         shader.bind();
 
+        shader.setShaderUniform("projection", camera.getProjectionMatrix());
+        shader.setShaderUniform("view", camera.getViewMatrix());
         shader.setShaderUniform("model", getGameObject().getTransform().getModelMatrix());
 
         GL41.glDrawElements(GL41.GL_TRIANGLES, indices.size(), GL41.GL_UNSIGNED_INT, 0);

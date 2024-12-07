@@ -8,13 +8,17 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Static
 public class LevelManager
 {
     private static final ConcurrentMap<String, Level> levels = new ConcurrentHashMap<>();
     private static @Nullable Level currentLevel = null;
+    private static final AtomicBoolean isLoading = new AtomicBoolean(false);
+    private static final ConcurrentLinkedQueue<Runnable> actionQueue = new ConcurrentLinkedQueue<>();
 
     private LevelManager() { }
 
@@ -37,6 +41,12 @@ public class LevelManager
 
     public static boolean loadLevel(@NotNull String name, @NotNull String path)
     {
+        if (isLoading.get())
+        {
+            System.err.println("Another level is currently loading. Cannot load level '" + name + "' now.");
+            return false;
+        }
+
         Level level = levels.get(name);
 
         if (level == null)
@@ -45,31 +55,42 @@ public class LevelManager
             return false;
         }
 
-        if (currentLevel != null)
-            unloadCurrentLevel();
+        isLoading.set(true);
 
-        path = path.replace(".bin", "");
+        try {
+            if (currentLevel != null)
+                unloadCurrentLevel();
 
-        for (String gameObjectName : level.getGameObjectNames())
-        {
-            File gameObjectFile = new File(path, gameObjectName + ".bin");
+            String sanitizedPath = path.replace(".bin", "");
 
-            try
+            for (String gameObjectName : level.getGameObjectNames())
             {
-                GameObject gameObject = GameObject.loadFromFile(gameObjectFile);
+                File gameObjectFile = new File(sanitizedPath, gameObjectName + ".bin");
 
-                if (gameObject == null)
-                    System.err.println("Failed to load GameObject '" + gameObjectName + "'.");
+                try
+                {
+                    GameObject gameObject = GameObject.loadFromFile(gameObjectFile);
+
+                    if (gameObject == null)
+                        System.err.println("Failed to load GameObject '" + gameObjectName + "'.");
+                }
+                catch (IOException | ClassNotFoundException e)
+                {
+                    System.err.println("Error loading GameObject '" + gameObjectName + "': " + e.getMessage());
+                }
             }
-            catch (IOException | ClassNotFoundException e)
-            {
-                System.err.println("Error loading GameObject '" + gameObjectName + "': " + e.getMessage());
-            }
+
+            currentLevel = level;
+
+            System.out.println("Level '" + name + "' loaded.");
+
+            return true;
         }
+        finally {
 
-        currentLevel = level;
-        System.out.println("Level '" + name + "' loaded.");
-        return true;
+            isLoading.set(false);
+            processQueuedActions();
+        }
     }
 
     public static void unloadCurrentLevel()
@@ -106,9 +127,15 @@ public class LevelManager
 
             if (gameObject != null)
             {
-                new File(path, name + "/").mkdirs();
+                File levelDir = new File(path, name);
 
-                File gameObjectFile = new File(path, name + "/" + gameObjectName + ".bin");
+                if (!levelDir.exists() && !levelDir.mkdirs())
+                {
+                    System.err.println("Failed to create directory: " + levelDir.getAbsolutePath());
+                    continue;
+                }
+
+                File gameObjectFile = new File(levelDir, gameObjectName + ".bin");
 
                 try
                 {
@@ -129,6 +156,12 @@ public class LevelManager
 
     public static boolean loadLevelFromFile(@NotNull String path)
     {
+        if (isLoading.get())
+        {
+            System.err.println("Another level is currently loading. Cannot load level from file now.");
+            return false;
+        }
+
         File levelFile = new File(path);
 
         Level level = Level.loadFromFile(levelFile);
@@ -140,11 +173,19 @@ public class LevelManager
         }
 
         levels.put(level.getName(), level);
+
         return loadLevel(level.getName(), path);
     }
 
     public static boolean addGameObjectToCurrentLevel(@NotNull GameObject gameObject)
     {
+        if (isLoading.get())
+        {
+            System.out.println("Level is loading. Queuing addGameObjectToCurrentLevel for GameObject '" + gameObject.getName() + "'.");
+            actionQueue.add(() -> addGameObjectToCurrentLevel(gameObject));
+            return true;
+        }
+
         if (currentLevel == null)
         {
             System.err.println("No level is currently loaded.");
@@ -164,14 +205,22 @@ public class LevelManager
 
     public static boolean removeGameObjectFromCurrentLevel(@NotNull GameObject gameObject)
     {
-        if (currentLevel == null)
+        if (isLoading.get())
         {
+            System.out.println("Level is loading. Queuing removeGameObjectFromCurrentLevel for GameObject '" + gameObject.getName() + "'.");
+
+            actionQueue.add(() -> removeGameObjectFromCurrentLevel(gameObject));
+
+            return true;
+        }
+
+        if (currentLevel == null) {
             System.err.println("No level is currently loaded.");
             return false;
         }
 
         currentLevel.removeGameObject(gameObject.getName());
-        GameObjectManager.unregister(gameObject.getName());
+
         System.out.println("GameObject '" + gameObject.getName() + "' removed from level '" + currentLevel.getName() + "'.");
         return true;
     }
@@ -220,8 +269,18 @@ public class LevelManager
         return true;
     }
 
-    public static @Nullable Level getCurrentLevel()
-    {
+    public static @Nullable Level getCurrentLevel() {
         return currentLevel;
+    }
+
+    private static void processQueuedActions()
+    {
+        while (!actionQueue.isEmpty())
+        {
+            Runnable action = actionQueue.poll();
+
+            if (action != null)
+                action.run();
+        }
     }
 }

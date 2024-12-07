@@ -1,7 +1,9 @@
 package com.thatsoulyguy.invasion2.system;
 
 import com.thatsoulyguy.invasion2.annotation.EffectivelyNotNull;
+import com.thatsoulyguy.invasion2.render.Camera;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.io.Serial;
@@ -13,7 +15,7 @@ public abstract class Component implements Serializable
 
     public void initialize() { }
     public void update() { }
-    public void render() { }
+    public void render(@Nullable Camera camera) { }
     public void uninitialize() { }
 
     public void onLoad() { }

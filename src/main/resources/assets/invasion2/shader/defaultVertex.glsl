@@ -5,6 +5,8 @@ layout(location = 1) in vec3 colorIn;
 layout(location = 2) in vec3 normalIn;
 layout(location = 3) in vec2 uvsIn;
 
+uniform mat4 projection;
+uniform mat4 view;
 uniform mat4 model;
 
 out vec3 color;
@@ -13,9 +15,11 @@ out vec2 uvs;
 
 void main()
 {
-    gl_Position = model * vec4(positionIn, 1.0);
+    gl_Position = projection * view * model * vec4(positionIn, 1.0);
 
     color = colorIn;
-    normal = normalIn;
+
+    mat3 normalMatrix = mat3(transpose(inverse(model)));
+    normal = normalMatrix * normalIn;
     uvs = uvsIn;
 }

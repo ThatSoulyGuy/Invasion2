@@ -27,6 +27,9 @@ public class GameObjectManager
 
     public static void unregister(@NotNull String name)
     {
+        if (gameObjectMap.containsKey(name))
+            LevelManager.removeGameObjectFromCurrentLevel(gameObjectMap.get(name));
+
         gameObjectMap.remove(name);
     }
 

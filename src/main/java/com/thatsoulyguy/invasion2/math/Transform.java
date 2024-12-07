@@ -6,62 +6,68 @@ import com.thatsoulyguy.invasion2.system.Component;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix4f;
+import org.joml.Quaternionf;
 import org.joml.Vector3f;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 @CustomConstructor("create")
 public class Transform extends Component
 {
-    private @EffectivelyNotNull Vector3f position;
-    private @EffectivelyNotNull Vector3f rotation;
-    private @EffectivelyNotNull Vector3f scale;
+    private @EffectivelyNotNull Vector3f localPosition;
+    private @EffectivelyNotNull Vector3f localRotation;
+    private @EffectivelyNotNull Vector3f localScale;
 
     private @Nullable Transform parent;
+    private final List<Transform> children = Collections.synchronizedList(new ArrayList<>());
 
     private Transform() { }
 
     public void translate(@NotNull Vector3f translation)
     {
-        position.add(new Vector3f(translation));
+        localPosition.add(translation);
     }
 
     public void rotate(@NotNull Vector3f rotation)
     {
-        this.rotation.add(new Vector3f(rotation));
+        this.localRotation.add(rotation);
     }
 
     public void scale(@NotNull Vector3f scale)
     {
-        this.scale.add(new Vector3f(scale));
+        this.localScale.add(scale);
     }
 
-    public @NotNull Vector3f getPosition()
+    public @NotNull Vector3f getLocalPosition()
     {
-        return position;
+        return new Vector3f(localPosition);
     }
 
-    public void setPosition(@NotNull Vector3f position)
+    public void setLocalPosition(@NotNull Vector3f localPosition)
     {
-        this.position = position;
+        this.localPosition = new Vector3f(localPosition);
     }
 
-    public @NotNull Vector3f getRotation()
+    public @NotNull Vector3f getLocalRotation()
     {
-        return rotation;
+        return new Vector3f(localRotation);
     }
 
-    public void setRotation(@NotNull Vector3f rotation)
+    public void setLocalRotation(@NotNull Vector3f localRotation)
     {
-        this.rotation = rotation;
+        this.localRotation = new Vector3f(localRotation);
     }
 
-    public @NotNull Vector3f getScale()
+    public @NotNull Vector3f getLocalScale()
     {
-        return scale;
+        return new Vector3f(localScale);
     }
 
-    public void setScale(@NotNull Vector3f scale)
+    public void setLocalScale(@NotNull Vector3f localScale)
     {
-        this.scale = scale;
+        this.localScale = new Vector3f(localScale);
     }
 
     public @Nullable Transform getParent()
@@ -71,24 +77,72 @@ public class Transform extends Component
 
     public void setParent(@Nullable Transform parent)
     {
+        if (this.parent != null)
+            this.parent.children.remove(this);
+
         this.parent = parent;
+
+        if (parent != null && !parent.children.contains(this))
+            parent.children.add(this);
+    }
+
+    public @NotNull List<Transform> getChildren()
+    {
+        return Collections.unmodifiableList(children);
+    }
+
+    public @NotNull Vector3f getForward()
+    {
+        return getModelMatrix().getColumn(2, new Vector3f()).negate().normalize();
+    }
+
+    public @NotNull Vector3f getRight()
+    {
+        return getModelMatrix().getColumn(0, new Vector3f()).normalize();
+    }
+
+    public @NotNull Vector3f getUp()
+    {
+        return getModelMatrix().getColumn(1, new Vector3f()).normalize();
+    }
+
+    public @NotNull Vector3f getWorldPosition()
+    {
+        return getModelMatrix().getTranslation(new Vector3f());
+    }
+
+    public @NotNull Vector3f getWorldRotation()
+    {
+        Quaternionf rotation = getModelMatrix().getNormalizedRotation(new Quaternionf());
+
+        Vector3f eulerAngles = new Vector3f();
+
+        rotation.getEulerAnglesXYZ(eulerAngles);
+
+        return eulerAngles.mul((float) Math.toDegrees(1.0));
+    }
+
+    public @NotNull Vector3f getWorldScale()
+    {
+        return getModelMatrix().getScale(new Vector3f());
     }
 
     public @NotNull Matrix4f getModelMatrix()
     {
+        float rx = (float) Math.toRadians(localRotation.x);
+        float ry = (float) Math.toRadians(localRotation.y);
+        float rz = (float) Math.toRadians(localRotation.z);
+
         Matrix4f localMatrix = new Matrix4f()
-                .translation(position)
-                .rotateXYZ(rotation.x, rotation.y, rotation.z)
-                .scale(scale);
+                .identity()
+                .scale(localScale)
+                .rotateY(ry)
+                .rotateX(rx)
+                .rotateZ(rz)
+                .translate(localPosition);
 
         if (parent != null)
-        {
-            Matrix4f parentMatrix = parent.getModelMatrix();
-
-            parentMatrix.mulLocal(localMatrix);
-
-            return parentMatrix;
-        }
+            return parent.getModelMatrix().mul(localMatrix, new Matrix4f());
         else
             return localMatrix;
     }
@@ -96,16 +150,18 @@ public class Transform extends Component
     @Override
     public String toString()
     {
-        return "\nPosition: [" + position.x + ", " + position.y + ", " + position.z + "]\n" + "Rotation: [" + rotation.x + ", " + rotation.y + ", " + rotation.z + "]\n" + "Scale: [" + scale.x + ", " + scale.y + ", " + scale.z + "]";
+        return "\nPosition: [" + localPosition.x + ", " + localPosition.y + ", " + localPosition.z + "]\n" +
+                "Rotation: [" + localRotation.x + ", " + localRotation.y + ", " + localRotation.z + "]\n" +
+                "Scale: [" + localScale.x + ", " + localScale.y + ", " + localScale.z + "]";
     }
 
     public static @NotNull Transform create(@NotNull Vector3f position, @NotNull Vector3f rotation, @NotNull Vector3f scale)
     {
         Transform result = new Transform();
 
-        result.position = new Vector3f(position);
-        result.rotation = new Vector3f(rotation);
-        result.scale = new Vector3f(scale);
+        result.localPosition = new Vector3f(position);
+        result.localRotation = new Vector3f(rotation);
+        result.localScale = new Vector3f(scale);
 
         return result;
     }

@@ -3,6 +3,7 @@ package com.thatsoulyguy.invasion2.system;
 import com.thatsoulyguy.invasion2.annotation.CustomConstructor;
 import com.thatsoulyguy.invasion2.annotation.EffectivelyNotNull;
 import com.thatsoulyguy.invasion2.math.Transform;
+import com.thatsoulyguy.invasion2.render.Camera;
 import com.thatsoulyguy.invasion2.render.TextureManager;
 import com.thatsoulyguy.invasion2.util.ManagerLinkedClass;
 import org.jetbrains.annotations.NotNull;
@@ -13,7 +14,7 @@ import java.io.*;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -23,19 +24,10 @@ public class GameObject implements Serializable
     private @EffectivelyNotNull String name;
     private final @NotNull ConcurrentMap<Class<? extends Component>, Component> componentMap = new ConcurrentHashMap<>();
 
+    private @Nullable transient GameObject parent;
+    private final @NotNull ConcurrentMap<String, GameObject> children = new ConcurrentHashMap<>();
+
     private GameObject() { }
-
-    public static @NotNull GameObject create(@NotNull String name)
-    {
-        GameObject result = new GameObject();
-
-        result.name = name;
-        result.addComponent(Transform.create(new Vector3f(0.0f), new Vector3f(0.0f), new Vector3f(1.0f)));
-
-        GameObjectManager.register(result);
-
-        return result;
-    }
 
     public <T extends Component> void addComponent(@NotNull T component)
     {
@@ -73,14 +65,74 @@ public class GameObject implements Serializable
         return name;
     }
 
+    public @Nullable GameObject getParent()
+    {
+        return parent;
+    }
+
+    public void setParent(@Nullable GameObject parent)
+    {
+        if (this.parent != null)
+            this.parent.children.remove(this);
+
+        this.parent = parent;
+
+        if (parent != null && !parent.children.containsValue(this))
+            parent.children.putIfAbsent(name, this);
+
+        if (parent != null)
+            getTransform().setParent(parent.getTransform());
+        else
+            getTransform().setParent(null);
+    }
+
+    public void addChild(@NotNull GameObject child)
+    {
+        if (isAncestor(child))
+            throw new IllegalArgumentException("Cannot add ancestor as child to prevent circular reference.");
+
+        GameObjectManager.unregister(child.getName());
+
+        children.putIfAbsent(child.name, child);
+        child.setParent(this);
+    }
+
+    public void removeChild(@NotNull GameObject child)
+    {
+        children.remove(child.name);
+        child.setParent(null);
+
+        GameObjectManager.register(child);
+    }
+
+    public @NotNull GameObject getChild(@NotNull String name)
+    {
+        return children.get(name);
+    }
+
+    public @NotNull Collection<GameObject> getChildren()
+    {
+        return Collections.unmodifiableCollection(children.values());
+    }
+
     public void update()
     {
         componentMap.values().parallelStream().forEach(Component::update);
+
+        synchronized (children)
+        {
+            children.values().forEach(GameObject::update);
+        }
     }
 
-    public void render()
+    public void render(@Nullable Camera camera)
     {
-        componentMap.values().forEach(Component::render);
+        componentMap.values().forEach((component) -> component.render(camera));
+
+        synchronized (children)
+        {
+            children.values().forEach((gameObject) -> gameObject.render(camera));
+        }
     }
 
     public void saveToStream(@NotNull DataOutputStream dos) throws IOException
@@ -107,110 +159,126 @@ public class GameObject implements Serializable
                 dos.write(componentData);
             }
         }
+
+        dos.writeInt(children.size());
+
+        for (GameObject child : children.values())
+            dos.writeUTF(child.getName());
     }
 
-    public static @NotNull GameObject loadFromStream(@NotNull DataInputStream dis) throws IOException, ClassNotFoundException
+    public static @NotNull GameObject loadFromStream(@NotNull DataInputStream dis, @NotNull File parentDirectory) throws IOException, ClassNotFoundException
     {
-        int availableStart = dis.available();
-        System.out.println("Bytes available at start: " + availableStart);
+        String gameObjectName = dis.readUTF();
+        GameObject gameObject = GameObject.create(gameObjectName);
 
-        try
+        int componentCount = dis.readInt();
+        for (int i = 0; i < componentCount; i++)
         {
-            String gameObjectName = dis.readUTF();
-            System.out.println("GameObject Name: " + gameObjectName);
+            String componentClassName = dis.readUTF();
 
-            GameObject gameObject = GameObject.create(gameObjectName);
+            int componentDataLength = dis.readInt();
+            byte[] componentData = new byte[componentDataLength];
 
-            int componentCount = dis.readInt();
-            System.out.println("Component Count: " + componentCount);
+            dis.readFully(componentData);
 
-            for (int i = 0; i < componentCount; i++)
+            try (ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(componentData)))
             {
-                String componentClassName = dis.readUTF();
-                System.out.println("Component Class Name: " + componentClassName);
-
-                int componentDataLength = dis.readInt();
-                System.out.println("Component Data Length: " + componentDataLength);
-
-                byte[] componentData = new byte[componentDataLength];
-
-                dis.readFully(componentData);
-                System.out.println("Read " + componentData.length + " bytes for component data.");
-
-                try (ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(componentData)))
+                Object obj = ois.readObject();
+                if (obj instanceof Component component)
                 {
-                    Object obj = ois.readObject();
-
-                    if (obj instanceof Component component)
+                    if (component instanceof ManagerLinkedClass linkedClass)
                     {
-                        if (component instanceof ManagerLinkedClass linkedClass)
+                        try
                         {
-                            try
+                            Method getMethod = linkedClass.getManagingClass().getDeclaredMethod("get", String.class);
+
+                            if (!getMethod.canAccess(null))
+                                getMethod.setAccessible(true);
+
+                            boolean isStatic = Modifier.isStatic(getMethod.getModifiers());
+
+                            if (!isStatic)
+                                throw new NoSuchMethodException("Method 'get' in manager class was non-static! This shouldn't happen!");
+
+                            Object result = getMethod.invoke(null, linkedClass.getManagedItem());
+
+                            if (result instanceof Component)
                             {
-                                Method getMethod = linkedClass.getManagingClass().getDeclaredMethod("get", String.class);
-
-                                if (!getMethod.canAccess(null))
-                                    getMethod.setAccessible(true);
-
-                                boolean isStatic = Modifier.isStatic(getMethod.getModifiers());
-
-                                if (!isStatic)
-                                    throw new NoSuchMethodException("Method 'get' in manager class was non-static! This shouldn't happen!");
-
-                                Object result = getMethod.invoke(null, linkedClass.getManagedItem());
-
-                                if (result instanceof Component)
-                                {
-                                    component = (Component) result;
-                                    System.out.println("Successfully linked component on Game Object: '" + gameObjectName + "'.");
-                                }
-                                else
-                                    System.err.println("Method 'get' did not return a Component instance.");
+                                component = (Component) result;
+                                System.out.println("Successfully linked component on Game Object: '" + gameObjectName + "'.");
                             }
-                            catch (NoSuchMethodException e)
-                            {
-                                System.err.println("Method 'get(String)' not found in linked class '" + linkedClass.getManagingClass().getSimpleName() + "'.");
-                            }
-                            catch (IllegalAccessException e)
-                            {
-                                System.err.println("Cannot access method 'get(String)' in linked class '" + linkedClass.getManagingClass().getSimpleName() + "'.");
-                            }
-                            catch (InvocationTargetException e)
-                            {
-                                System.err.println("An exception occurred while invoking method 'get(String)' in linked class '" + linkedClass.getManagingClass().getSimpleName() + "'.");
-                            }
+                            else
+                                System.err.println("Method 'get' did not return a Component instance.");
                         }
-
-                        gameObject.addComponent(component);
-                        System.out.println("Added component: " + component.getClass().getName());
+                        catch (NoSuchMethodException e)
+                        {
+                            System.err.println("Method 'get(String)' not found in linked class '" + linkedClass.getManagingClass().getSimpleName() + "'.");
+                        }
+                        catch (IllegalAccessException e)
+                        {
+                            System.err.println("Cannot access method 'get(String)' in linked class '" + linkedClass.getManagingClass().getSimpleName() + "'.");
+                        }
+                        catch (InvocationTargetException e)
+                        {
+                            System.err.println("An exception occurred while invoking method 'get(String)' in linked class '" + linkedClass.getManagingClass().getSimpleName() + "'.");
+                        }
                     }
-                    else
-                        System.err.println("Invalid component type: " + componentClassName);
+
+                    gameObject.addComponent(component);
+                    System.out.println("Added component: " + component.getClass().getName());
                 }
+                else
+                    System.err.println("Invalid component type: " + componentClassName);
             }
-
-            int availableEnd = dis.available();
-
-            System.out.println("Bytes available at end: " + availableEnd);
-
-            gameObject.componentMap.values().forEach(Component::onLoad);
-
-            return gameObject;
         }
-        catch (EOFException e)
+
+        int childrenCount = dis.readInt();
+
+        for (int i = 0; i < childrenCount; i++)
         {
-            System.err.println("Reached end of stream unexpectedly.");
+            String childName = dis.readUTF();
 
-            throw e;
+            File childDir = new File(parentDirectory, gameObjectName);
+            File childFile = new File(childDir, childName + ".bin");
+
+            if (childFile.exists())
+            {
+                GameObject child = GameObject.loadFromFile(childFile);
+
+                if (child != null)
+                    gameObject.addChild(child);
+                else
+                    System.err.println("Failed to load child GameObject: " + childName);
+            }
+            else
+                System.err.println("Child GameObject file does not exist: " + childFile.getAbsolutePath());
         }
+
+        gameObject.componentMap.values().forEach(Component::onLoad);
+
+        return gameObject;
     }
 
-    public void saveToFile(@NotNull File file) throws IOException
+    public void saveToFile(@NotNull File parentDirectory) throws IOException
     {
+        parentDirectory = new File(parentDirectory.getAbsolutePath().replace(".bin", ""));
+        File gameObjectDirectory = new File(parentDirectory, name);
+
+        if (!parentDirectory.exists() && !(parentDirectory.toPath().getParent().endsWith(name) && parentDirectory.toPath().endsWith(name)))
+        {
+            if (!parentDirectory.mkdirs())
+                throw new IOException("Failed to create directory for GameObject: " + name);
+        }
+
+        File file = new File(parentDirectory.toPath().getParent().toFile(), name + ".bin");
+
         try (DataOutputStream dos = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(file))))
         {
             saveToStream(dos);
         }
+
+        for (GameObject child : children.values())
+            child.saveToFile(gameObjectDirectory);
     }
 
     public static @Nullable GameObject loadFromFile(@NotNull File file) throws IOException, ClassNotFoundException
@@ -221,15 +289,51 @@ public class GameObject implements Serializable
             return null;
         }
 
+        File parentDirectory = file.getParentFile();
+
         try (DataInputStream dis = new DataInputStream(new BufferedInputStream(new FileInputStream(file))))
         {
-            return loadFromStream(dis);
+            return loadFromStream(dis, parentDirectory);
         }
+    }
+
+    private boolean isAncestor(@NotNull GameObject potentialAncestor)
+    {
+        GameObject current = this.parent;
+
+        while (current != null)
+        {
+            if (current == potentialAncestor)
+                return true;
+
+            current = current.parent;
+        }
+
+        return false;
     }
 
     public void uninitialize()
     {
         componentMap.values().forEach(Component::uninitialize);
         componentMap.clear();
+
+        synchronized (children)
+        {
+            children.values().forEach(GameObject::uninitialize);
+
+            children.clear();
+        }
+    }
+
+    public static @NotNull GameObject create(@NotNull String name)
+    {
+        GameObject result = new GameObject();
+
+        result.name = name;
+        result.addComponent(Transform.create(new Vector3f(0.0f), new Vector3f(0.0f), new Vector3f(1.0f)));
+
+        GameObjectManager.register(result);
+
+        return result;
     }
 }

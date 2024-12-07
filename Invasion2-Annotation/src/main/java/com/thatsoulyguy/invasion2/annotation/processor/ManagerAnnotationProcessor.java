@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-@SupportedSourceVersion(SourceVersion.RELEASE_22)
+@SupportedSourceVersion(SourceVersion.RELEASE_23)
 @SupportedAnnotationTypes("com.thatsoulyguy.invasion2.annotation.Manager")
 public class ManagerAnnotationProcessor extends AbstractProcessor
 {
