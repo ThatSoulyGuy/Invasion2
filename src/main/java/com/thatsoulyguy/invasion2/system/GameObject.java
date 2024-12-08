@@ -241,8 +241,6 @@ public class GameObject implements Serializable
                 result.addComponent(component);
             }
 
-            result.componentMap.values().forEach(Component::onLoad);
-
             System.out.println("Deserialized game object '" + result.name + "' at position/rotation/scale: " + result.getTransform());
 
             if (childrenCount > 0)
@@ -250,6 +248,8 @@ public class GameObject implements Serializable
                 for (int c = 0; c < childrenCount; c++)
                     result.addChild(GameObject.load(new File(file.getAbsolutePath().replace(".bin", "/"), objectInputStream.readUTF() + ".bin")));
             }
+
+            result.componentMap.values().forEach(Component::onLoad);
 
             objectInputStream.close();
         }

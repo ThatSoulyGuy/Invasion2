@@ -48,6 +48,11 @@ public class Window
         GLFW.glfwSwapInterval(1);
 
         GL.createCapabilities();
+
+        GL41.glEnable(GL41.GL_DEPTH_TEST);
+
+        GL41.glEnable(GL41.GL_CULL_FACE);
+        GL41.glCullFace(GL41.GL_BACK);
     }
 
     public static void preRender()

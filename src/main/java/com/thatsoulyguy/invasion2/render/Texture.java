@@ -27,8 +27,9 @@ public class Texture extends Component implements ManagerLinkedClass
     private @EffectivelyNotNull Filter filter;
     private @EffectivelyNotNull Wrapping wrapping;
 
-    private int textureId;
+    private transient int textureId;
     private @Nullable Vector2i dimensions = null;
+    private boolean loadedFromMemory = false;
 
     private Texture() { }
 
@@ -41,7 +42,6 @@ public class Texture extends Component implements ManagerLinkedClass
         }
 
         GL41.glActiveTexture(GL41.GL_TEXTURE0 + slot);
-
         GL41.glBindTexture(GL41.GL_TEXTURE_2D, textureId);
     }
 
@@ -59,6 +59,9 @@ public class Texture extends Component implements ManagerLinkedClass
     @Override
     public void onLoad()
     {
+        if (loadedFromMemory)
+            return;
+
         try (MemoryStack stack = MemoryStack.stackPush())
         {
             IntBuffer widthBuffer = stack.mallocInt(1);
@@ -100,9 +103,20 @@ public class Texture extends Component implements ManagerLinkedClass
         return name;
     }
 
+    public void setName(@NotNull String name)
+    {
+        this.name = name;
+    }
+
     public @NotNull AssetPath getLocalPath()
     {
         return localPath;
+    }
+
+    public void setLocalPath(@NotNull AssetPath localPath)
+    {
+        this.localPath = localPath;
+        this.fullPath = localPath.getFullPath();
     }
 
     public @NotNull String getFullPath()
@@ -115,9 +129,19 @@ public class Texture extends Component implements ManagerLinkedClass
         return filter;
     }
 
+    public void setFilter(@NotNull Filter filter)
+    {
+        this.filter = filter;
+    }
+
     public @NotNull Wrapping getWrapping()
     {
         return wrapping;
+    }
+
+    public void setWrapping(@NotNull Wrapping wrapping)
+    {
+        this.wrapping = wrapping;
     }
 
     public @Nullable Vector2i getDimensions()
@@ -125,9 +149,19 @@ public class Texture extends Component implements ManagerLinkedClass
         return dimensions;
     }
 
+    public void setDimensions(@NotNull Vector2i dimensions)
+    {
+        this.dimensions = dimensions;
+    }
+
     public int getTextureId()
     {
         return textureId;
+    }
+
+    public void setTextureId(int textureId)
+    {
+        this.textureId = textureId;
     }
 
     private @Nullable ByteBuffer loadImageAsByteBuffer(@NotNull String resourcePath)
@@ -140,10 +174,8 @@ public class Texture extends Component implements ManagerLinkedClass
             byte[] bytes = stream.readAllBytes();
 
             ByteBuffer buffer = ByteBuffer.allocateDirect(bytes.length);
-
             buffer.put(bytes);
             buffer.flip();
-
             return buffer;
         }
         catch (Exception exception)
@@ -177,17 +209,49 @@ public class Texture extends Component implements ManagerLinkedClass
 
     public static @NotNull Texture create(@NotNull String name, @NotNull Filter filter, @NotNull Wrapping wrapping, @NotNull AssetPath localPath)
     {
+        return create(name, filter, wrapping, localPath, false);
+    }
+
+    public static @NotNull Texture create(@NotNull String name, @NotNull Filter filter, @NotNull Wrapping wrapping, @NotNull AssetPath localPath, boolean immediateLoad)
+    {
         Texture result = new Texture();
+        result.setName(name);
+        result.setLocalPath(localPath);
+        result.setFilter(filter);
+        result.setWrapping(wrapping);
+        result.textureId = -1;
 
-        result.name = name;
-        result.localPath = localPath;
-        result.fullPath = localPath.getFullPath();
-        result.filter = filter;
-        result.wrapping = wrapping;
-
-        result.onLoad();
+        if (immediateLoad)
+            result.onLoad();
 
         return result;
+    }
+
+    public static @NotNull Texture create(@NotNull String name, @NotNull Filter filter, @NotNull Wrapping wrapping, int width, int height, @NotNull ByteBuffer pixelData)
+    {
+        Texture result = new Texture();
+        result.setName(name);
+        result.filter = filter;
+        result.wrapping = wrapping;
+        result.loadedFromMemory = true;
+
+        result.uploadRawData(pixelData, width, height);
+        return result;
+    }
+
+    public void uploadRawData(@NotNull ByteBuffer pixelData, int width, int height)
+    {
+        this.dimensions = new Vector2i(width, height);
+        this.textureId = GL41.glGenTextures();
+        GL41.glBindTexture(GL41.GL_TEXTURE_2D, textureId);
+
+        GL41.glTexImage2D(GL41.GL_TEXTURE_2D, 0, GL41.GL_RGBA, width, height, 0, GL41.GL_RGBA, GL41.GL_UNSIGNED_BYTE, pixelData);
+        GL41.glTexParameteri(GL41.GL_TEXTURE_2D, GL41.GL_TEXTURE_WRAP_S, wrapping.getValue());
+        GL41.glTexParameteri(GL41.GL_TEXTURE_2D, GL41.GL_TEXTURE_WRAP_T, wrapping.getValue());
+        GL41.glTexParameteri(GL41.GL_TEXTURE_2D, GL41.GL_TEXTURE_MIN_FILTER, filter.getValue());
+        GL41.glTexParameteri(GL41.GL_TEXTURE_2D, GL41.GL_TEXTURE_MAG_FILTER, filter.getValue());
+
+        GL41.glBindTexture(GL41.GL_TEXTURE_2D, 0);
     }
 
     public enum Filter
@@ -202,7 +266,7 @@ public class Texture extends Component implements ManagerLinkedClass
             this.value = value;
         }
 
-        int getValue()
+        public int getValue()
         {
             return value;
         }
@@ -221,7 +285,7 @@ public class Texture extends Component implements ManagerLinkedClass
             this.value = value;
         }
 
-        int getValue()
+        public int getValue()
         {
             return value;
         }

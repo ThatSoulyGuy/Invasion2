@@ -2,6 +2,7 @@ package com.thatsoulyguy.invasion2.render;
 
 import com.thatsoulyguy.invasion2.annotation.CustomConstructor;
 import com.thatsoulyguy.invasion2.system.Component;
+import com.thatsoulyguy.invasion2.world.TextureAtlas;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector2f;
@@ -14,6 +15,7 @@ import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Function;
 
 @CustomConstructor("create")
@@ -22,7 +24,7 @@ public class Mesh extends Component
     private final @NotNull List<Vertex> vertices = Collections.synchronizedList(new ArrayList<>());
     private final @NotNull List<Integer> indices = Collections.synchronizedList(new ArrayList<>());
 
-    private int vao, vbo, cbo, nbo, uvbo, ibo;
+    private transient int vao, vbo, cbo, nbo, uvbo, ibo;
 
     private Mesh() { }
 
@@ -68,6 +70,10 @@ public class Mesh extends Component
             return;
 
         Texture texture = getGameObject().getComponent(Texture.class);
+
+        if (texture == null)
+            texture = Objects.requireNonNull(getGameObject().getComponent(TextureAtlas.class)).getOutputTexture();
+
         Shader shader = getGameObject().getComponent(Shader.class);
 
         if (texture == null || shader == null)
@@ -107,6 +113,28 @@ public class Mesh extends Component
 
         if (error != GL41.GL_NO_ERROR)
             System.err.println("OpenGL error: " + error);
+    }
+
+    public @NotNull List<Vertex> getVertices()
+    {
+        return Collections.unmodifiableList(vertices);
+    }
+
+    public @NotNull List<Integer> getIndices()
+    {
+        return Collections.unmodifiableList(indices);
+    }
+
+    public void setVertices(@NotNull List<Vertex> vertices)
+    {
+        this.vertices.clear();
+        this.vertices.addAll(vertices);
+    }
+
+    public void setIndices(@NotNull List<Integer> indices)
+    {
+        this.indices.clear();
+        this.indices.addAll(indices);
     }
 
     private static <T> FloatBuffer toBuffer(List<Vertex> vertices, Function<Vertex, T> extractor)

@@ -11,11 +11,16 @@ import com.thatsoulyguy.invasion2.system.GameObjectManager;
 import com.thatsoulyguy.invasion2.system.LevelManager;
 import com.thatsoulyguy.invasion2.util.AssetPath;
 import com.thatsoulyguy.invasion2.util.FileHelper;
+import com.thatsoulyguy.invasion2.world.Chunk;
+import com.thatsoulyguy.invasion2.world.TextureAtlas;
+import com.thatsoulyguy.invasion2.world.TextureAtlasManager;
 import org.joml.Vector2f;
 import org.joml.Vector2i;
 import org.joml.Vector3f;
 
 import java.awt.*;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
@@ -26,7 +31,7 @@ public class Invasion2
     private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
 
     private @EffectivelyNotNull GameObject player;
-    private @EffectivelyNotNull GameObject cube;
+    private @EffectivelyNotNull GameObject chunk;
 
     public void preInitialize()
     {
@@ -41,10 +46,11 @@ public class Invasion2
 
         Vector2i windowSize = new Vector2i(windowWidth, windowHeight);
 
-        Window.initialize("Invasion 2* (1.14.6r2)", windowSize);
+        Window.initialize("Invasion 2* (1.17.4r2)", windowSize);
 
         ShaderManager.register(Shader.create("default", AssetPath.create("invasion2", "shader/default")));
-        TextureManager.register(Texture.create("debug", Texture.Filter.NEAREST, Texture.Wrapping.REPEAT, AssetPath.create("invasion2", "texture/grass.png")));
+        TextureManager.register(Texture.create("debug", Texture.Filter.NEAREST, Texture.Wrapping.REPEAT, AssetPath.create("invasion2", "texture/debug.png")));
+        TextureAtlasManager.register(TextureAtlas.create("blocks", AssetPath.create("invasion2", "texture/block/")));
 
         InputManager.update();
     }
@@ -53,32 +59,26 @@ public class Invasion2
     {
         //LevelManager.loadLevel(FileHelper.getPersistentDataPath("Invasion2") + "/overworld");
 
+        ///*
         LevelManager.createLevel("overworld", true);
 
         player = GameObject.create("player");
 
         player.addComponent(Entity.create(EntityPlayer.class));
 
-        cube = GameObject.create("cube");
+        chunk = GameObject.create("chunk");
 
-        cube.addComponent(Objects.requireNonNull(ShaderManager.get("default")));
-        cube.addComponent(Objects.requireNonNull(TextureManager.get("debug")));
+        chunk.addComponent(Objects.requireNonNull(ShaderManager.get("default")));
+        chunk.addComponent(Objects.requireNonNull(TextureAtlasManager.get("blocks")));
 
-        cube.addComponent(Mesh.create(
-        List.of
-        (
-            Vertex.create(new Vector3f(-0.5f,  0.5f, 0.0f), new Vector3f(1.0f, 1.0f, 1.0f), new Vector3f(0.0f, 0.0f, 1.0f), new Vector2f(0.0f, 0.0f)),
-            Vertex.create(new Vector3f(-0.5f, -0.5f, 0.0f), new Vector3f(1.0f, 1.0f, 1.0f), new Vector3f(0.0f, 0.0f, 1.0f), new Vector2f(0.0f, 1.0f)),
-            Vertex.create(new Vector3f( 0.5f, -0.5f, 0.0f), new Vector3f(1.0f, 1.0f, 1.0f), new Vector3f(0.0f, 0.0f, 1.0f), new Vector2f(1.0f, 1.0f)),
-            Vertex.create(new Vector3f( 0.5f,  0.5f, 0.0f), new Vector3f(1.0f, 1.0f, 1.0f), new Vector3f(0.0f, 0.0f, 1.0f), new Vector2f(1.0f, 0.0f))
-        ),
-        List.of
-        (
-            0, 1, 2,
-            2, 3, 0
-        )));
+        Objects.requireNonNull(chunk.getComponent(TextureAtlas.class)).onLoad();
 
-        Objects.requireNonNull(cube.getComponent(Mesh.class)).onLoad();
+        chunk.addComponent(Mesh.create(new ArrayList<>(), new ArrayList<>()));
+
+        chunk.addComponent(Chunk.create());
+
+        Objects.requireNonNull(chunk.getComponent(Chunk.class)).onLoad();
+        //*/
     }
 
     public void update()

@@ -24,7 +24,7 @@ public class Shader extends Component implements ManagerLinkedClass
     private @EffectivelyNotNull String vertexPath, fragmentPath;
     private @EffectivelyNotNull String vertexSource, fragmentSource;
 
-    private int program = -1;
+    private transient int program = -1;
 
     private Shader() { }
 

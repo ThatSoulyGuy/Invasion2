@@ -37,7 +37,7 @@ public class EntityPlayer extends Entity
         super.update();
 
         updateMouselook();
-        //updateMovement();
+        updateMovement();
     }
 
     @Override
@@ -55,13 +55,13 @@ public class EntityPlayer extends Entity
     @Override
     public float getWalkingSpeed()
     {
-        return 0.36f;
+        return 0.1f;
     }
 
     @Override
     public float getRunningSpeed()
     {
-        return 0.446f;
+        return 0.2f;
     }
 
     @Override

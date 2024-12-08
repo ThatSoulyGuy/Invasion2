@@ -55,7 +55,7 @@ public class FileHelper
         return path.substring(0, index);
     }
 
-    public static @Nullable String readFile(@NotNull String path)
+    public static @NotNull String readFile(@NotNull String path)
     {
         StringBuilder result = new StringBuilder();
 
