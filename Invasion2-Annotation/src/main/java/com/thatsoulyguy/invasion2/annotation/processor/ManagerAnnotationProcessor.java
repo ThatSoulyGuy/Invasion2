@@ -116,13 +116,18 @@ public class ManagerAnnotationProcessor extends AbstractProcessor
 
     private boolean validateMethod(@NotNull Element element, @NotNull String name, @Nullable String parameterTypeName, boolean shouldParameterBeNotNull, boolean shouldBeNotNull, @Nullable String returnTypeName, boolean shouldHaveReturnValue, boolean shouldReturnValueBeNullable)
     {
-        boolean hasCorrectSignature = false;
+        boolean foundCorrectSignature = false;
 
         for (Element enclosed : element.getEnclosedElements())
         {
             if (enclosed.getKind() == ElementKind.METHOD && enclosed.getSimpleName().toString().equals(name))
             {
+                if (foundCorrectSignature)
+                    continue;
+
                 ExecutableElement method = (ExecutableElement) enclosed;
+
+                boolean hasCorrectSignature = true;
 
                 if (!method.getModifiers().contains(Modifier.STATIC))
                 {
@@ -131,11 +136,8 @@ public class ManagerAnnotationProcessor extends AbstractProcessor
                             "Method " + name + " must be static.",
                             method
                     );
-
-                    return false;
+                    hasCorrectSignature = false;
                 }
-
-                hasCorrectSignature = true;
 
                 List<? extends VariableElement> parameters = method.getParameters();
 
@@ -148,12 +150,11 @@ public class ManagerAnnotationProcessor extends AbstractProcessor
                                 "Method " + name + " must have exactly one parameter.",
                                 method
                         );
-
                         hasCorrectSignature = false;
                     }
                     else
                     {
-                        VariableElement parameter = parameters.getFirst();
+                        VariableElement parameter = parameters.get(0);
 
                         if (!processingEnv.getTypeUtils().erasure(parameter.asType()).toString().equals(parameterTypeName))
                         {
@@ -172,7 +173,6 @@ public class ManagerAnnotationProcessor extends AbstractProcessor
                                     "Parameter in method " + name + " must be annotated with @NotNull.",
                                     parameter
                             );
-
                             hasCorrectSignature = false;
                         }
                     }
@@ -186,7 +186,6 @@ public class ManagerAnnotationProcessor extends AbstractProcessor
                                 "Method " + name + " must not have any parameters.",
                                 method
                         );
-
                         hasCorrectSignature = false;
                     }
                 }
@@ -250,10 +249,13 @@ public class ManagerAnnotationProcessor extends AbstractProcessor
                         hasCorrectSignature = false;
                     }
                 }
+
+                if (hasCorrectSignature)
+                    foundCorrectSignature = true;
             }
         }
 
-        if (!hasCorrectSignature)
+        if (!foundCorrectSignature)
         {
             processingEnv.getMessager().printMessage(
                     Diagnostic.Kind.ERROR,
@@ -262,6 +264,6 @@ public class ManagerAnnotationProcessor extends AbstractProcessor
             );
         }
 
-        return hasCorrectSignature;
+        return foundCorrectSignature;
     }
 }

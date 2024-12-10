@@ -56,8 +56,7 @@ public class Texture extends Component implements ManagerLinkedClass
         GL41.glBindTexture(GL41.GL_TEXTURE_2D, 0);
     }
 
-    @Override
-    public void onLoad()
+    public void generate()
     {
         if (loadedFromMemory)
             return;
@@ -164,6 +163,21 @@ public class Texture extends Component implements ManagerLinkedClass
         this.textureId = textureId;
     }
 
+    public void uploadRawData(@NotNull ByteBuffer pixelData, int width, int height)
+    {
+        this.dimensions = new Vector2i(width, height);
+        this.textureId = GL41.glGenTextures();
+        GL41.glBindTexture(GL41.GL_TEXTURE_2D, textureId);
+
+        GL41.glTexImage2D(GL41.GL_TEXTURE_2D, 0, GL41.GL_RGBA, width, height, 0, GL41.GL_RGBA, GL41.GL_UNSIGNED_BYTE, pixelData);
+        GL41.glTexParameteri(GL41.GL_TEXTURE_2D, GL41.GL_TEXTURE_WRAP_S, wrapping.getValue());
+        GL41.glTexParameteri(GL41.GL_TEXTURE_2D, GL41.GL_TEXTURE_WRAP_T, wrapping.getValue());
+        GL41.glTexParameteri(GL41.GL_TEXTURE_2D, GL41.GL_TEXTURE_MIN_FILTER, filter.getValue());
+        GL41.glTexParameteri(GL41.GL_TEXTURE_2D, GL41.GL_TEXTURE_MAG_FILTER, filter.getValue());
+
+        GL41.glBindTexture(GL41.GL_TEXTURE_2D, 0);
+    }
+
     private @Nullable ByteBuffer loadImageAsByteBuffer(@NotNull String resourcePath)
     {
         try (InputStream stream = Texture.class.getResourceAsStream(resourcePath))
@@ -236,22 +250,10 @@ public class Texture extends Component implements ManagerLinkedClass
         result.loadedFromMemory = true;
 
         result.uploadRawData(pixelData, width, height);
+
+        result.generate();
+
         return result;
-    }
-
-    public void uploadRawData(@NotNull ByteBuffer pixelData, int width, int height)
-    {
-        this.dimensions = new Vector2i(width, height);
-        this.textureId = GL41.glGenTextures();
-        GL41.glBindTexture(GL41.GL_TEXTURE_2D, textureId);
-
-        GL41.glTexImage2D(GL41.GL_TEXTURE_2D, 0, GL41.GL_RGBA, width, height, 0, GL41.GL_RGBA, GL41.GL_UNSIGNED_BYTE, pixelData);
-        GL41.glTexParameteri(GL41.GL_TEXTURE_2D, GL41.GL_TEXTURE_WRAP_S, wrapping.getValue());
-        GL41.glTexParameteri(GL41.GL_TEXTURE_2D, GL41.GL_TEXTURE_WRAP_T, wrapping.getValue());
-        GL41.glTexParameteri(GL41.GL_TEXTURE_2D, GL41.GL_TEXTURE_MIN_FILTER, filter.getValue());
-        GL41.glTexParameteri(GL41.GL_TEXTURE_2D, GL41.GL_TEXTURE_MAG_FILTER, filter.getValue());
-
-        GL41.glBindTexture(GL41.GL_TEXTURE_2D, 0);
     }
 
     public enum Filter

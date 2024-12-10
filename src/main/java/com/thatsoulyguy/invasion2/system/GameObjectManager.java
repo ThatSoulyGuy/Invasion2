@@ -27,18 +27,23 @@ public class GameObjectManager
 
     public static void unregister(@NotNull String name)
     {
+        unregister(name, false);
+    }
+
+    public static void unregister(@NotNull String name, boolean uninitialize)
+    {
         if (gameObjectMap.containsKey(name) && LevelManager.getCurrentLevel() != null)
             LevelManager.getCurrentLevel().removeGameObject(name);
+
+        if (uninitialize && gameObjectMap.containsKey(name))
+            gameObjectMap.get(name).uninitialize();
 
         gameObjectMap.remove(name);
     }
 
     public static @Nullable GameObject get(@NotNull String name)
     {
-        if (!gameObjectMap.containsKey(name))
-            return null;
-
-        return gameObjectMap.get(name);
+        return gameObjectMap.getOrDefault(name, null);
     }
 
     public static @NotNull List<GameObject> getAll()

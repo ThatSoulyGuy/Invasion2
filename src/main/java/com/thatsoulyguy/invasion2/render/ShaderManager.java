@@ -29,10 +29,7 @@ public class ShaderManager
 
     public static @Nullable Shader get(@NotNull String name)
     {
-        if (!registeredShaders.containsKey(name))
-            return null;
-
-        return registeredShaders.get(name);
+        return registeredShaders.getOrDefault(name, null);
     }
 
     public static @NotNull List<Shader> getAll()

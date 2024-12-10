@@ -15,8 +15,8 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.*;
+import java.util.concurrent.locks.ReentrantLock;
 
 @CustomConstructor("create")
 public class GameObject implements Serializable
@@ -135,43 +135,32 @@ public class GameObject implements Serializable
         }
     }
 
-    public void save(@NotNull File file)
+    public void save(@NotNull File file) //TODO: Very slow; change approach to treat chunks as 'different' for faster saving
     {
-        try (FileOutputStream fileOutputStream = new FileOutputStream(file))
+        try (FileOutputStream fileOutputStream = new FileOutputStream(file); ObjectOutputStream objectOutputStream = new ObjectOutputStream(fileOutputStream))
         {
-            ObjectOutputStream objectOutputStream = new ObjectOutputStream(fileOutputStream);
-
             File childrenDirectory = new File(file.getAbsolutePath().replace(".bin", "/"));
 
             objectOutputStream.writeUTF(name);
-
             objectOutputStream.writeInt(componentMap.size());
             objectOutputStream.writeInt(children.size());
 
-            componentMap.values().forEach((component ->
+            ExecutorService componentExecutor = Executors.newVirtualThreadPerTaskExecutor();
+
+            List<Future<?>> componentFutures = new ArrayList<>();
+
+            for (Component component : componentMap.values())
             {
-                try
-                {
-                    System.out.println("Saving component '" + component.getClass().getSimpleName() + "' on game object '" + name + "'...");
-
-                    objectOutputStream.writeObject(component);
-                }
-                catch (IOException e)
-                {
-                    throw new RuntimeException(e);
-                }
-            }));
-
-            if (!children.isEmpty())
-            {
-                if (!childrenDirectory.exists())
-                    childrenDirectory.mkdirs();
-
-                children.values().forEach((child ->
+                componentFutures.add(componentExecutor.submit(() ->
                 {
                     try
                     {
-                        objectOutputStream.writeUTF(child.name);
+                        System.out.println("Saving component '" + component.getClass().getSimpleName() + "' on game object '" + name + "'...");
+
+                        synchronized (objectOutputStream)
+                        {
+                            objectOutputStream.writeObject(component);
+                        }
                     }
                     catch (IOException e)
                     {
@@ -180,12 +169,33 @@ public class GameObject implements Serializable
                 }));
             }
 
-            System.out.println("Saved game object '" + name + "' at position/rotation/scale: " + getTransform());
+            componentExecutor.shutdown();
+
+            for (Future<?> future : componentFutures)
+                future.get();
 
             if (!children.isEmpty())
-                children.values().forEach((child -> child.save(new File(childrenDirectory, child.name + ".bin"))));
+            {
+                if (!childrenDirectory.exists())
+                    childrenDirectory.mkdirs();
 
-            objectOutputStream.close();
+                for (GameObject child : children.values())
+                    objectOutputStream.writeUTF(child.name);
+            }
+
+            System.out.println("Saved game object '" + name + "' at position/rotation/scale: " + getTransform());
+
+            ExecutorService childrenExecutor = Executors.newVirtualThreadPerTaskExecutor();
+            List<Future<?>> childFutures = new ArrayList<>();
+
+            for (GameObject child : children.values())
+                childFutures.add(childrenExecutor.submit(() -> child.save(new File(childrenDirectory, child.name + ".bin"))));
+
+            childrenExecutor.shutdown();
+
+            for (Future<?> future : childFutures)
+                future.get();
+
         }
         catch (Exception exception)
         {
@@ -193,69 +203,74 @@ public class GameObject implements Serializable
         }
     }
 
-    public static @NotNull GameObject load(@NotNull File file)
+    public static @NotNull GameObject load(@NotNull File file) //TODO: Very slow; change approach to treat chunks as 'different' for faster loading
     {
         GameObject result = new GameObject();
+        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
 
-        try (FileInputStream fileInputStream = new FileInputStream(file))
+        ReentrantLock fileLock = new ReentrantLock();
+
+        try (FileInputStream fileInputStream = new FileInputStream(file); ObjectInputStream objectInputStream = new ObjectInputStream(fileInputStream))
         {
-            ObjectInputStream objectInputStream = new ObjectInputStream(fileInputStream);
+            fileLock.lock();
 
-            result.name = objectInputStream.readUTF();
-
-            System.out.println("Deserializing game object '" + result.name + "'...");
-
-            int componentCount = objectInputStream.readInt();
-            int childrenCount = objectInputStream.readInt();
-
-            List<Component> components = new ArrayList<>();
-
-            for (int c = 0; c < componentCount; c++)
+            try
             {
-                Object object = objectInputStream.readObject();
+                result.name = objectInputStream.readUTF();
+                System.out.println("Deserializing game object '" + result.name + "'...");
 
-                if (object instanceof Component component)
+                int componentCount = objectInputStream.readInt();
+                int childrenCount = objectInputStream.readInt();
+
+                for (int i = 0; i < componentCount; i++)
                 {
-                    if (component instanceof ManagerLinkedClass linkedClass)
-                        component = (Component) linkedClass.getManagingClass().getMethod("get", String.class).invoke(null, linkedClass.getManagedItem());
+                    Object object = objectInputStream.readObject();
 
-                    System.out.println("Deserialized component '" + component.getClass().getSimpleName() + "'.");
-
-                    components.add(component);
+                    if (object instanceof Component component)
+                    {
+                        System.out.println("Deserialized component '" + component.getClass().getSimpleName() + "'.");
+                        result.addComponent(component);
+                    }
+                    else
+                        System.err.println("Invalid component found during deserialization.");
                 }
-                else
-                    System.err.println("Non-component saved in components list!");
-            }
 
-            for (Component component : components)
+                System.out.println("Components loaded for game object: " + result.name);
+
+                List<GameObject> children = new ArrayList<>();
+
+                for (int i = 0; i < childrenCount; i++)
+                {
+                    String childName = objectInputStream.readUTF();
+                    File childFile = new File(file.getAbsolutePath().replace(".bin", "/"), childName + ".bin");
+
+                    Future<GameObject> futureChild = executor.submit(() -> load(childFile));
+
+                    children.add(futureChild.get());
+                }
+
+                for (GameObject child : children)
+                    result.addChild(child);
+
+                System.out.println("Children loaded for game object: " + result.name);
+
+                result.componentMap.values().forEach(Component::onLoad);
+
+                System.out.println("Deserialized game object '" + result.name + "' at position/rotation/scale: " + result.getTransform());
+            }
+            finally
             {
-                if (component instanceof Transform)
-                    result.addComponent(component);
+                fileLock.unlock();
             }
 
-            for (Component component : components)
-            {
-                if (component instanceof Transform)
-                    continue;
-
-                result.addComponent(component);
-            }
-
-            System.out.println("Deserialized game object '" + result.name + "' at position/rotation/scale: " + result.getTransform());
-
-            if (childrenCount > 0)
-            {
-                for (int c = 0; c < childrenCount; c++)
-                    result.addChild(GameObject.load(new File(file.getAbsolutePath().replace(".bin", "/"), objectInputStream.readUTF() + ".bin")));
-            }
-
-            result.componentMap.values().forEach(Component::onLoad);
-
-            objectInputStream.close();
         }
         catch (Exception exception)
         {
             System.err.println("Failed to deserialize game object at '" + file.getAbsolutePath() + "'! " + exception.getMessage());
+        }
+        finally
+        {
+            executor.shutdown();
         }
 
         return result;

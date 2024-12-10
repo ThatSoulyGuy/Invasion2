@@ -2,6 +2,7 @@ package com.thatsoulyguy.invasion2.render;
 
 import com.thatsoulyguy.invasion2.annotation.CustomConstructor;
 import com.thatsoulyguy.invasion2.system.Component;
+import com.thatsoulyguy.invasion2.thread.MainThreadExecutor;
 import com.thatsoulyguy.invasion2.world.TextureAtlas;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -16,6 +17,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 @CustomConstructor("create")
@@ -26,93 +29,147 @@ public class Mesh extends Component
 
     private transient int vao, vbo, cbo, nbo, uvbo, ibo;
 
+    private @Nullable transient Future<Void> initializationFuture;
+
     private Mesh() { }
 
     @Override
     public void onLoad()
     {
-        vao = GL41.glGenVertexArrays();
-        GL41.glBindVertexArray(vao);
+        if (vao == 0)
+        {
+            initializationFuture = MainThreadExecutor.submit(() ->
+            {
+                System.out.println("Starting OpenGL resource initialization for Mesh: " + this);
 
-        vbo = GL41.glGenBuffers();
-        GL41.glBindBuffer(GL41.GL_ARRAY_BUFFER, vbo);
-        GL41.glBufferData(GL41.GL_ARRAY_BUFFER, toBuffer(vertices, Vertex::getPosition), GL41.GL_STATIC_DRAW);
-        GL41.glVertexAttribPointer(0, 3, GL41.GL_FLOAT, false, 0, 0);
-        GL41.glEnableVertexAttribArray(0);
+                vao = GL41.glGenVertexArrays();
+                GL41.glBindVertexArray(vao);
 
-        cbo = GL41.glGenBuffers();
-        GL41.glBindBuffer(GL41.GL_ARRAY_BUFFER, cbo);
-        GL41.glBufferData(GL41.GL_ARRAY_BUFFER, toBuffer(vertices, Vertex::getColor), GL41.GL_STATIC_DRAW);
-        GL41.glVertexAttribPointer(1, 3, GL41.GL_FLOAT, false, 0, 0);
-        GL41.glEnableVertexAttribArray(1);
+                vbo = GL41.glGenBuffers();
+                GL41.glBindBuffer(GL41.GL_ARRAY_BUFFER, vbo);
+                GL41.glBufferData(GL41.GL_ARRAY_BUFFER, toBuffer(vertices, Vertex::getPosition), GL41.GL_DYNAMIC_DRAW);
+                GL41.glVertexAttribPointer(0, 3, GL41.GL_FLOAT, false, 0, 0);
+                GL41.glEnableVertexAttribArray(0);
 
-        nbo = GL41.glGenBuffers();
-        GL41.glBindBuffer(GL41.GL_ARRAY_BUFFER, nbo);
-        GL41.glBufferData(GL41.GL_ARRAY_BUFFER, toBuffer(vertices, Vertex::getNormal), GL41.GL_STATIC_DRAW);
-        GL41.glVertexAttribPointer(2, 3, GL41.GL_FLOAT, false, 0, 0);
-        GL41.glEnableVertexAttribArray(2);
+                cbo = GL41.glGenBuffers();
+                GL41.glBindBuffer(GL41.GL_ARRAY_BUFFER, cbo);
+                GL41.glBufferData(GL41.GL_ARRAY_BUFFER, toBuffer(vertices, Vertex::getColor), GL41.GL_DYNAMIC_DRAW);
+                GL41.glVertexAttribPointer(1, 3, GL41.GL_FLOAT, false, 0, 0);
+                GL41.glEnableVertexAttribArray(1);
 
-        uvbo = GL41.glGenBuffers();
-        GL41.glBindBuffer(GL41.GL_ARRAY_BUFFER, uvbo);
-        GL41.glBufferData(GL41.GL_ARRAY_BUFFER, toBuffer(vertices, Vertex::getUVs), GL41.GL_STATIC_DRAW);
-        GL41.glVertexAttribPointer(3, 2, GL41.GL_FLOAT, false, 0, 0);
-        GL41.glEnableVertexAttribArray(3);
+                nbo = GL41.glGenBuffers();
+                GL41.glBindBuffer(GL41.GL_ARRAY_BUFFER, nbo);
+                GL41.glBufferData(GL41.GL_ARRAY_BUFFER, toBuffer(vertices, Vertex::getNormal), GL41.GL_DYNAMIC_DRAW);
+                GL41.glVertexAttribPointer(2, 3, GL41.GL_FLOAT, false, 0, 0);
+                GL41.glEnableVertexAttribArray(2);
 
-        ibo = GL41.glGenBuffers();
-        GL41.glBindBuffer(GL41.GL_ELEMENT_ARRAY_BUFFER, ibo);
-        GL41.glBufferData(GL41.GL_ELEMENT_ARRAY_BUFFER, toBuffer(indices), GL41.GL_STATIC_DRAW);
+                uvbo = GL41.glGenBuffers();
+                GL41.glBindBuffer(GL41.GL_ARRAY_BUFFER, uvbo);
+                GL41.glBufferData(GL41.GL_ARRAY_BUFFER, toBuffer(vertices, Vertex::getUVs), GL41.GL_DYNAMIC_DRAW);
+                GL41.glVertexAttribPointer(3, 2, GL41.GL_FLOAT, false, 0, 0);
+                GL41.glEnableVertexAttribArray(3);
+
+                ibo = GL41.glGenBuffers();
+                GL41.glBindBuffer(GL41.GL_ELEMENT_ARRAY_BUFFER, ibo);
+                GL41.glBufferData(GL41.GL_ELEMENT_ARRAY_BUFFER, toBuffer(indices), GL41.GL_DYNAMIC_DRAW);
+
+                GL41.glBindVertexArray(0);
+
+                System.out.println("Completed OpenGL resource initialization for Mesh: " + this);
+            });
+        }
+        else
+        {
+            initializationFuture = MainThreadExecutor.submit(() ->
+            {
+                System.out.println("Starting OpenGL resource initialization for Mesh: " + this);
+
+                GL41.glBindVertexArray(vao);
+
+                GL41.glBindBuffer(GL41.GL_ARRAY_BUFFER, vbo);
+                GL41.glBufferData(GL41.GL_ARRAY_BUFFER, toBuffer(vertices, Vertex::getPosition), GL41.GL_DYNAMIC_DRAW);
+
+                GL41.glBindBuffer(GL41.GL_ARRAY_BUFFER, cbo);
+                GL41.glBufferData(GL41.GL_ARRAY_BUFFER, toBuffer(vertices, Vertex::getColor), GL41.GL_DYNAMIC_DRAW);
+
+                GL41.glBindBuffer(GL41.GL_ARRAY_BUFFER, nbo);
+                GL41.glBufferData(GL41.GL_ARRAY_BUFFER, toBuffer(vertices, Vertex::getNormal), GL41.GL_DYNAMIC_DRAW);
+
+                GL41.glBindBuffer(GL41.GL_ARRAY_BUFFER, uvbo);
+                GL41.glBufferData(GL41.GL_ARRAY_BUFFER, toBuffer(vertices, Vertex::getUVs), GL41.GL_DYNAMIC_DRAW);
+
+                GL41.glBindBuffer(GL41.GL_ELEMENT_ARRAY_BUFFER, ibo);
+                GL41.glBufferData(GL41.GL_ELEMENT_ARRAY_BUFFER, toBuffer(indices), GL41.GL_DYNAMIC_DRAW);
+
+                GL41.glBindVertexArray(0);
+
+                System.out.println("Completed OpenGL resource initialization for Mesh: " + this);
+
+                return null;
+            });
+        }
     }
 
     @Override
     public void render(@Nullable Camera camera)
     {
-        if (camera == null)
-            return;
-
-        Texture texture = getGameObject().getComponent(Texture.class);
-
-        if (texture == null)
-            texture = Objects.requireNonNull(getGameObject().getComponent(TextureAtlas.class)).getOutputTexture();
-
-        Shader shader = getGameObject().getComponent(Shader.class);
-
-        if (texture == null || shader == null)
+        try
         {
-            System.err.println("Shader or Texture component(s) missing from GameObject: '" + getGameObject().getName() + "'!");
-            return;
+            if (initializationFuture != null)
+                initializationFuture.get(0, TimeUnit.SECONDS); //TODO: Sometimes when 'onLoad' is called concurrently, the future does not complete successfully.
+
+            if (camera == null)
+                return;
+
+            Texture texture = getGameObject().getComponent(Texture.class);
+
+            if (texture == null)
+                texture = Objects.requireNonNull(getGameObject().getComponent(TextureAtlas.class)).getOutputTexture();
+
+            Shader shader = getGameObject().getComponent(Shader.class);
+
+            if (texture == null || shader == null)
+            {
+                System.err.println("Shader or Texture component(s) missing from GameObject: '" + getGameObject().getName() + "'!");
+                return;
+            }
+
+            GL41.glBindVertexArray(vao);
+
+            GL41.glEnableVertexAttribArray(0);
+            GL41.glEnableVertexAttribArray(1);
+            GL41.glEnableVertexAttribArray(2);
+            GL41.glEnableVertexAttribArray(3);
+
+            texture.bind(0);
+
+            shader.bind();
+
+            shader.setShaderUniform("projection", camera.getProjectionMatrix());
+            shader.setShaderUniform("view", camera.getViewMatrix());
+            shader.setShaderUniform("model", getGameObject().getTransform().getModelMatrix());
+
+            GL41.glDrawElements(GL41.GL_TRIANGLES, indices.size(), GL41.GL_UNSIGNED_INT, 0);
+
+            shader.unbind();
+            texture.unbind();
+
+            GL41.glDisableVertexAttribArray(0);
+            GL41.glDisableVertexAttribArray(1);
+            GL41.glDisableVertexAttribArray(2);
+            GL41.glDisableVertexAttribArray(3);
+
+            GL41.glBindVertexArray(0);
+
+            int error = GL41.glGetError();
+
+            if (error != GL41.GL_NO_ERROR)
+                System.err.println("OpenGL error: " + error);
         }
-
-        GL41.glBindVertexArray(vao);
-
-        GL41.glEnableVertexAttribArray(0);
-        GL41.glEnableVertexAttribArray(1);
-        GL41.glEnableVertexAttribArray(2);
-        GL41.glEnableVertexAttribArray(3);
-
-        texture.bind(0);
-
-        shader.bind();
-
-        shader.setShaderUniform("projection", camera.getProjectionMatrix());
-        shader.setShaderUniform("view", camera.getViewMatrix());
-        shader.setShaderUniform("model", getGameObject().getTransform().getModelMatrix());
-
-        GL41.glDrawElements(GL41.GL_TRIANGLES, indices.size(), GL41.GL_UNSIGNED_INT, 0);
-
-        shader.unbind();
-        texture.unbind();
-
-        GL41.glDisableVertexAttribArray(0);
-        GL41.glDisableVertexAttribArray(1);
-        GL41.glDisableVertexAttribArray(2);
-        GL41.glDisableVertexAttribArray(3);
-
-        GL41.glBindVertexArray(0);
-
-        int error = GL41.glGetError();
-
-        if (error != GL41.GL_NO_ERROR)
-            System.err.println("OpenGL error: " + error);
+        catch (Exception exception)
+        {
+            exception.printStackTrace();
+        }
     }
 
     public @NotNull List<Vertex> getVertices()
@@ -186,12 +243,15 @@ public class Mesh extends Component
     @Override
     public void uninitialize()
     {
-        GL41.glDeleteVertexArrays(vao);
-        GL41.glDeleteBuffers(vbo);
-        GL41.glDeleteBuffers(cbo);
-        GL41.glDeleteBuffers(nbo);
-        GL41.glDeleteBuffers(uvbo);
-        GL41.glDeleteBuffers(ibo);
+        MainThreadExecutor.submit(() ->
+        {
+            GL41.glDeleteVertexArrays(vao);
+            GL41.glDeleteBuffers(vbo);
+            GL41.glDeleteBuffers(cbo);
+            GL41.glDeleteBuffers(nbo);
+            GL41.glDeleteBuffers(uvbo);
+            GL41.glDeleteBuffers(ibo);
+        });
     }
 
     public static @NotNull Mesh create(@NotNull List<Vertex> vertices, @NotNull List<Integer> indices)

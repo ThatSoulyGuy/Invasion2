@@ -1,6 +1,7 @@
 package com.thatsoulyguy.invasion2;
 
 import com.thatsoulyguy.invasion2.annotation.EffectivelyNotNull;
+import com.thatsoulyguy.invasion2.block.BlockRegistry;
 import com.thatsoulyguy.invasion2.core.Window;
 import com.thatsoulyguy.invasion2.entity.Entity;
 import com.thatsoulyguy.invasion2.entity.entities.EntityPlayer;
@@ -9,11 +10,13 @@ import com.thatsoulyguy.invasion2.render.*;
 import com.thatsoulyguy.invasion2.system.GameObject;
 import com.thatsoulyguy.invasion2.system.GameObjectManager;
 import com.thatsoulyguy.invasion2.system.LevelManager;
+import com.thatsoulyguy.invasion2.thread.MainThreadExecutor;
 import com.thatsoulyguy.invasion2.util.AssetPath;
 import com.thatsoulyguy.invasion2.util.FileHelper;
 import com.thatsoulyguy.invasion2.world.Chunk;
 import com.thatsoulyguy.invasion2.world.TextureAtlas;
 import com.thatsoulyguy.invasion2.world.TextureAtlasManager;
+import com.thatsoulyguy.invasion2.world.World;
 import org.joml.Vector2f;
 import org.joml.Vector2i;
 import org.joml.Vector3f;
@@ -31,7 +34,7 @@ public class Invasion2
     private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
 
     private @EffectivelyNotNull GameObject player;
-    private @EffectivelyNotNull GameObject chunk;
+    private @EffectivelyNotNull GameObject world;
 
     public void preInitialize()
     {
@@ -46,11 +49,15 @@ public class Invasion2
 
         Vector2i windowSize = new Vector2i(windowWidth, windowHeight);
 
+        MainThreadExecutor.initialize();
+
         Window.initialize("Invasion 2* (1.17.4r2)", windowSize);
 
         ShaderManager.register(Shader.create("default", AssetPath.create("invasion2", "shader/default")));
         TextureManager.register(Texture.create("debug", Texture.Filter.NEAREST, Texture.Wrapping.REPEAT, AssetPath.create("invasion2", "texture/debug.png")));
         TextureAtlasManager.register(TextureAtlas.create("blocks", AssetPath.create("invasion2", "texture/block/")));
+
+        BlockRegistry.initialize();
 
         InputManager.update();
     }
@@ -66,24 +73,18 @@ public class Invasion2
 
         player.addComponent(Entity.create(EntityPlayer.class));
 
-        chunk = GameObject.create("chunk");
+        world = GameObject.create("world");
 
-        chunk.addComponent(Objects.requireNonNull(ShaderManager.get("default")));
-        chunk.addComponent(Objects.requireNonNull(TextureAtlasManager.get("blocks")));
-
-        Objects.requireNonNull(chunk.getComponent(TextureAtlas.class)).onLoad();
-
-        chunk.addComponent(Mesh.create(new ArrayList<>(), new ArrayList<>()));
-
-        chunk.addComponent(Chunk.create());
-
-        Objects.requireNonNull(chunk.getComponent(Chunk.class)).onLoad();
+        world.addComponent(World.create("overworld"));
         //*/
     }
 
     public void update()
     {
+        Objects.requireNonNull(Objects.requireNonNull(GameObjectManager.get("world")).getComponent(World.class)).chunkLoader = Objects.requireNonNull(GameObjectManager.get("player")).getTransform();
+
         GameObjectManager.getAll().forEach(gameObject -> executor.submit(gameObject::update));
+        MainThreadExecutor.execute();
 
         InputManager.update();
     }

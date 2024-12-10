@@ -9,8 +9,7 @@ import com.thatsoulyguy.invasion2.util.ManagerLinkedClass;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector2f;
-import org.joml.Vector2i;
-import org.lwjgl.opengl.GL41;
+
 import org.lwjgl.stb.STBImage;
 import org.lwjgl.system.MemoryStack;
 
@@ -32,13 +31,15 @@ public class TextureAtlas extends Component implements ManagerLinkedClass
     private @EffectivelyNotNull AssetPath localDirectory;
     private @EffectivelyNotNull String directory;
 
-    private final @NotNull ConcurrentMap<String, Vector2f[]> subTextureMap = new ConcurrentHashMap<>();
+    private final @NotNull transient ConcurrentMap<String, Vector2f[]> subTextureMap;
     private @Nullable transient Texture outputTexture = null;
 
-    private TextureAtlas() { }
+    private TextureAtlas()
+    {
+        subTextureMap = new ConcurrentHashMap<>();
+    }
 
-    @Override
-    public void initialize()
+    public void generate()
     {
         try
         {
@@ -106,9 +107,48 @@ public class TextureAtlas extends Component implements ManagerLinkedClass
         return outputTexture;
     }
 
-    public @NotNull ConcurrentMap<String, Vector2f[]> getSubTextureMap()
+    public @Nullable Vector2f[] getSubTextureCoordinates(@NotNull String name)
     {
-        return subTextureMap;
+        return getSubTextureCoordinates(name, 0.0f);
+    }
+
+    public @Nullable Vector2f[] getSubTextureCoordinates(@NotNull String name, float rotation)
+    {
+        Vector2f[] uvs = subTextureMap.getOrDefault(name, null);
+
+        if (uvs == null || rotation == 0.0f)
+            return uvs;
+
+        float centerX = 0.0f;
+        float centerY = 0.0f;
+
+        for (Vector2f uv : uvs)
+        {
+            centerX += uv.x;
+            centerY += uv.y;
+        }
+        centerX /= uvs.length;
+        centerY /= uvs.length;
+
+        float radians = (float)Math.toRadians(rotation);
+        float cos = (float)Math.cos(radians);
+        float sin = (float)Math.sin(radians);
+
+        Vector2f[] rotatedUVs = new Vector2f[uvs.length];
+        for (int i = 0; i < uvs.length; i++)
+        {
+            Vector2f original = uvs[i];
+
+            float dx = original.x - centerX;
+            float dy = original.y - centerY;
+
+            float rx = dx * cos - dy * sin;
+            float ry = dx * sin + dy * cos;
+
+            rotatedUVs[i] = new Vector2f(centerX + rx, centerY + ry);
+        }
+
+        return rotatedUVs;
     }
 
     public @NotNull AssetPath getLocalDirectory()
@@ -327,8 +367,12 @@ public class TextureAtlas extends Component implements ManagerLinkedClass
     public static @NotNull TextureAtlas create(@NotNull String name, @NotNull AssetPath localPath)
     {
         TextureAtlas result = new TextureAtlas();
+
         result.setName(name);
         result.setLocalDirectory(localPath);
+
+        result.generate();
+
         return result;
     }
 

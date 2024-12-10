@@ -78,8 +78,7 @@ public class Shader extends Component implements ManagerLinkedClass
         GL41.glUniformMatrix4fv(GL41.glGetUniformLocation(program, name), false, buffer);
     }
 
-    @Override
-    public void onLoad()
+    public void generate()
     {
         int vertex = GL41.glCreateShader(GL41.GL_VERTEX_SHADER);
         GL41.glShaderSource(vertex, vertexSource);
@@ -156,7 +155,7 @@ public class Shader extends Component implements ManagerLinkedClass
         result.vertexSource = FileHelper.readFile(result.vertexPath);
         result.fragmentSource = FileHelper.readFile(result.fragmentPath);
 
-        result.onLoad();
+        result.generate();
 
         return result;
     }

@@ -29,10 +29,7 @@ public class TextureManager
 
     public static @Nullable Texture get(@NotNull String name)
     {
-        if (!registeredTextures.containsKey(name))
-            return null;
-
-        return registeredTextures.get(name);
+        return registeredTextures.getOrDefault(name, null);
     }
 
     public static @NotNull List<Texture> getAll()
