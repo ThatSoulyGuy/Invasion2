@@ -21,9 +21,6 @@ public class Window
 
     public static void initialize(@NotNull String title, @NotNull Vector2i dimensions)
     {
-        if(!GLFW.glfwInit())
-            throw new IllegalStateException("Failed to initialize GLFW");
-
         GLFW.glfwWindowHint(GLFW.GLFW_VISIBLE, GLFW.GLFW_FALSE);
         GLFW.glfwWindowHint(GLFW.GLFW_RESIZABLE, GLFW.GLFW_TRUE);
         GLFW.glfwWindowHint(GLFW.GLFW_CONTEXT_VERSION_MAJOR, 4);

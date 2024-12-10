@@ -20,6 +20,8 @@ import com.thatsoulyguy.invasion2.world.World;
 import org.joml.Vector2f;
 import org.joml.Vector2i;
 import org.joml.Vector3f;
+import org.lwjgl.glfw.GLFW;
+import org.lwjgl.glfw.GLFWVidMode;
 
 import java.awt.*;
 import java.util.ArrayList;
@@ -40,12 +42,32 @@ public class Invasion2
     {
         InputManager.initialize();
 
-        double dpi = Toolkit.getDefaultToolkit().getScreenResolution() / 96.0f;
-        int screenWidth = (int) (Toolkit.getDefaultToolkit().getScreenSize().width * dpi);
-        int screenHeight = (int) (Toolkit.getDefaultToolkit().getScreenSize().height * dpi);
+        if(!GLFW.glfwInit())
+            throw new IllegalStateException("Failed to initialize GLFW");
 
-        int windowWidth = screenWidth / 2;
-        int windowHeight = screenHeight / 2;
+        long primaryMonitor = GLFW.glfwGetPrimaryMonitor();
+
+        if (primaryMonitor == 0L)
+            throw new RuntimeException("Failed to get primary monitor");
+
+        GLFWVidMode vidMode = GLFW.glfwGetVideoMode(primaryMonitor);
+        if (vidMode == null)
+            throw new RuntimeException("Failed to get video mode");
+
+        int screenWidth = vidMode.width();
+        int screenHeight = vidMode.height();
+
+        float[] xScale = new float[1];
+        float[] yScale = new float[1];
+        GLFW.glfwGetMonitorContentScale(primaryMonitor, xScale, yScale);
+
+        double scalingFactor = (xScale[0] + yScale[0]) / 2.0;
+
+        int scaledScreenWidth = (int) (screenWidth * scalingFactor);
+        int scaledScreenHeight = (int) (screenHeight * scalingFactor);
+
+        int windowWidth = scaledScreenWidth / 2;
+        int windowHeight = scaledScreenHeight / 2;
 
         Vector2i windowSize = new Vector2i(windowWidth, windowHeight);
 
