@@ -119,6 +119,116 @@ public class BlockRegistry
         }
     };
 
+    public static final Block BLOCK_DIRT = new Block()
+    {
+        @Override
+        public @NotNull String getDisplayName()
+        {
+            return "block_dirt";
+        }
+
+        @Override
+        public @NotNull String getRegistryName()
+        {
+            return "Dirt Block";
+        }
+
+        @Override
+        public float getHardness()
+        {
+            return 0.14f;
+        }
+
+        @Override
+        public float getResistance()
+        {
+            return 0.1f;
+        }
+
+        @Override
+        public @NotNull String[] getTextures()
+        {
+            return new String[]
+            {
+                "dirt",
+                "dirt",
+                "dirt",
+                "dirt",
+                "dirt",
+                "dirt"
+            };
+        }
+
+        @Override
+        public @NotNull Vector3f[] getColors()
+        {
+            return new Vector3f[]
+            {
+                new Vector3f(1.0f),
+                new Vector3f(1.0f),
+                new Vector3f(1.0f),
+                new Vector3f(1.0f),
+                new Vector3f(1.0f),
+                new Vector3f(1.0f),
+            };
+        }
+    };
+
+    public static final Block BLOCK_STONE = new Block()
+    {
+        @Override
+        public @NotNull String getDisplayName()
+        {
+            return "block_stone";
+        }
+
+        @Override
+        public @NotNull String getRegistryName()
+        {
+            return "Stone Block";
+        }
+
+        @Override
+        public float getHardness()
+        {
+            return 0.14f;
+        }
+
+        @Override
+        public float getResistance()
+        {
+            return 0.1f;
+        }
+
+        @Override
+        public @NotNull String[] getTextures()
+        {
+            return new String[]
+            {
+                "stone",
+                "stone",
+                "stone",
+                "stone",
+                "stone",
+                "stone"
+            };
+        }
+
+        @Override
+        public @NotNull Vector3f[] getColors()
+        {
+            return new Vector3f[]
+            {
+                new Vector3f(1.0f),
+                new Vector3f(1.0f),
+                new Vector3f(1.0f),
+                new Vector3f(1.0f),
+                new Vector3f(1.0f),
+                new Vector3f(1.0f),
+            };
+        }
+    };
+
     private static final ConcurrentMap<String, Block> blocksByName = new ConcurrentHashMap<>();
     private static final ConcurrentMap<Short, Block> blocksById = new ConcurrentHashMap<>();
 
@@ -128,6 +238,8 @@ public class BlockRegistry
     {
         register(BLOCK_AIR);
         register(BLOCK_GRASS);
+        register(BLOCK_DIRT);
+        register(BLOCK_STONE);
     }
 
     public static void register(@NotNull Block object)

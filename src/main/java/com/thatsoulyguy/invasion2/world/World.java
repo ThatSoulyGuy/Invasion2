@@ -9,28 +9,52 @@ import com.thatsoulyguy.invasion2.system.Component;
 import com.thatsoulyguy.invasion2.system.GameObject;
 import com.thatsoulyguy.invasion2.system.GameObjectManager;
 import com.thatsoulyguy.invasion2.util.CoordinateHelper;
+import com.thatsoulyguy.invasion2.util.SerializableObject;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 @CustomConstructor("create")
 public class World extends Component
 {
+    public static final int WORLD_HEIGHT = 256;
+    public static final int VERTICAL_CHUNKS = WORLD_HEIGHT / Chunk.SIZE;
+
     public static final byte RENDER_DISTANCE = 3;
 
     private @EffectivelyNotNull String name;
 
     public @Nullable Transform chunkLoader;
 
-    private final List<Vector3i> loadedChunks = Collections.synchronizedList(new ArrayList<>());
+    private final @NotNull Set<Vector3i> loadedChunks = ConcurrentHashMap.newKeySet();
+
+    private final @NotNull Set<Vector3i> generatingChunks = ConcurrentHashMap.newKeySet();
+
+    private final @NotNull TerrainGenerator terrainGenerator = TerrainGenerator.create(
+            0.01,
+            Chunk.SIZE,
+            12345L
+    );
+
+    private transient @EffectivelyNotNull ExecutorService chunkGenerationExecutor;
+
+    private final SerializableObject chunkLock = new SerializableObject();
 
     private World() { }
+
+    @Override
+    public void onLoad()
+    {
+        generatingChunks.clear();
+        chunkGenerationExecutor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() / 2);
+    }
 
     @Override
     public void update()
@@ -41,7 +65,10 @@ public class World extends Component
 
     public @NotNull Chunk generateChunk(@NotNull Vector3i chunkPosition)
     {
-        GameObject object = GameObject.create("chunk_" +  chunkPosition.x + "_" + chunkPosition.y + "_" + chunkPosition.z);
+        if (loadedChunks.contains(chunkPosition)) //TODO: Hack; Address the root cause of multiple threads trying to generate the same chunk
+            return Objects.requireNonNull(GameObjectManager.get("chunk_" + chunkPosition.x + "_" + chunkPosition.y + "_" + chunkPosition.z).getComponent(Chunk.class));
+
+        GameObject object = GameObject.create("chunk_" + chunkPosition.x + "_" + chunkPosition.y + "_" + chunkPosition.z);
 
         object.getTransform().setLocalPosition(CoordinateHelper.chunkToWorldCoordinates(chunkPosition));
 
@@ -50,7 +77,11 @@ public class World extends Component
 
         object.addComponent(Mesh.create(new ArrayList<>(), new ArrayList<>()));
 
-        object.addComponent(Chunk.create());
+        short[][][] blocks = new short[Chunk.SIZE][Chunk.SIZE][Chunk.SIZE];
+
+        terrainGenerator.generateBlocks(blocks, chunkPosition);
+
+        object.addComponent(Chunk.create(blocks));
 
         Objects.requireNonNull(object.getComponent(Chunk.class)).onLoad();
 
@@ -65,7 +96,7 @@ public class World extends Component
             return;
         }
 
-        GameObjectManager.unregister("chunk_" +  chunkPosition.x + "_" + chunkPosition.y + "_" + chunkPosition.z, true);
+        GameObjectManager.unregister("chunk_" + chunkPosition.x + "_" + chunkPosition.y + "_" + chunkPosition.z, true);
 
         loadedChunks.remove(chunkPosition);
     }
@@ -81,17 +112,32 @@ public class World extends Component
 
         for (int cx = playerChunkPosition.x - RENDER_DISTANCE; cx <= playerChunkPosition.x + RENDER_DISTANCE; cx++)
         {
-            for (int cy = playerChunkPosition.y - RENDER_DISTANCE; cy <= playerChunkPosition.y + RENDER_DISTANCE; cy++)
+            for (int cz = playerChunkPosition.z - RENDER_DISTANCE; cz <= playerChunkPosition.z + RENDER_DISTANCE; cz++)
             {
-                for (int cz = playerChunkPosition.z - RENDER_DISTANCE; cz <= playerChunkPosition.z + RENDER_DISTANCE; cz++)
+                for (int cy = 0; cy < VERTICAL_CHUNKS; cy++)
                 {
                     Vector3i currentChunk = new Vector3i(cx, cy, cz);
 
-                    if (loadedChunks.contains(currentChunk))
+                    if (loadedChunks.contains(currentChunk) || !generatingChunks.add(currentChunk))
                         continue;
 
-                    Chunk newChunk = generateChunk(currentChunk);
-                    loadedChunks.add(currentChunk);
+                    chunkGenerationExecutor.submit(() ->
+                    {
+                        try
+                        {
+                            Chunk chunk = generateChunk(currentChunk);
+                            loadedChunks.add(currentChunk);
+                        }
+                        catch (Exception e)
+                        {
+                            System.err.println("Error generating chunk " + currentChunk + ": " + e.getMessage());
+                            e.printStackTrace();
+                        }
+                        finally
+                        {
+                            generatingChunks.remove(currentChunk);
+                        }
+                    });
                 }
             }
         }
@@ -99,29 +145,47 @@ public class World extends Component
 
     private void unloadFarChunks()
     {
-        if (chunkLoader == null)
-            return;
-
-        Vector3f playerWorldPosition = chunkLoader.getWorldPosition();
-        Vector3i playerChunkPosition = CoordinateHelper.worldToChunkCoordinates(playerWorldPosition);
-
-        int unloadDistance = RENDER_DISTANCE + 1;
-
-        loadedChunks.removeIf(chunkPosition ->
+        synchronized (chunkLock)
         {
-            int dx = Math.abs(chunkPosition.x - playerChunkPosition.x);
-            int dy = Math.abs(chunkPosition.y - playerChunkPosition.y);
-            int dz = Math.abs(chunkPosition.z - playerChunkPosition.z);
+            if (chunkLoader == null)
+                return;
 
-            if (dx > unloadDistance || dy > unloadDistance || dz > unloadDistance)
+            Vector3f playerWorldPosition = chunkLoader.getWorldPosition();
+            Vector3i playerChunkPosition = CoordinateHelper.worldToChunkCoordinates(playerWorldPosition);
+
+            int unloadDistance = RENDER_DISTANCE + 1;
+
+            loadedChunks.removeIf(chunkPosition ->
             {
-                unloadChunk(chunkPosition);
+                int dx = Math.abs(chunkPosition.x - playerChunkPosition.x);
+                int dz = Math.abs(chunkPosition.z - playerChunkPosition.z);
 
-                return true;
-            }
+                if (dx > unloadDistance || dz > unloadDistance)
+                {
+                    unloadChunk(chunkPosition);
+                    return true;
+                }
 
-            return false;
-        });
+                return false;
+            });
+        }
+    }
+
+    @Override
+    public void uninitialize()
+    {
+        chunkGenerationExecutor.shutdown(); //TODO: HOW THE F*** IS THIS NULL?!??!?! IT IS FINAL AND SET IN THE CONSTRUCTOR!!!!
+
+        try
+        {
+            if (!chunkGenerationExecutor.awaitTermination(20, TimeUnit.SECONDS))
+                chunkGenerationExecutor.shutdownNow();
+        }
+        catch (InterruptedException e)
+        {
+            chunkGenerationExecutor.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
     }
 
     public static @NotNull World create(@NotNull String name)

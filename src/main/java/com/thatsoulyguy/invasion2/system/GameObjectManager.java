@@ -2,6 +2,7 @@ package com.thatsoulyguy.invasion2.system;
 
 import com.thatsoulyguy.invasion2.annotation.Manager;
 import com.thatsoulyguy.invasion2.annotation.Static;
+import com.thatsoulyguy.invasion2.render.Camera;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -49,6 +50,12 @@ public class GameObjectManager
     public static @NotNull List<GameObject> getAll()
     {
         return List.copyOf(gameObjectMap.values());
+    }
+
+    public static void render(@Nullable Camera camera)
+    {
+        for (GameObject gameObject : gameObjectMap.values())
+            gameObject.render(camera);
     }
 
     public static boolean has(@NotNull String name)

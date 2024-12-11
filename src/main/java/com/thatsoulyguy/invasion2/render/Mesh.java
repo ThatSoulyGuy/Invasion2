@@ -17,8 +17,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 
 @CustomConstructor("create")
@@ -40,8 +42,6 @@ public class Mesh extends Component
         {
             initializationFuture = MainThreadExecutor.submit(() ->
             {
-                System.out.println("Starting OpenGL resource initialization for Mesh: " + this);
-
                 vao = GL41.glGenVertexArrays();
                 GL41.glBindVertexArray(vao);
 
@@ -74,16 +74,12 @@ public class Mesh extends Component
                 GL41.glBufferData(GL41.GL_ELEMENT_ARRAY_BUFFER, toBuffer(indices), GL41.GL_DYNAMIC_DRAW);
 
                 GL41.glBindVertexArray(0);
-
-                System.out.println("Completed OpenGL resource initialization for Mesh: " + this);
             });
         }
         else
         {
             initializationFuture = MainThreadExecutor.submit(() ->
             {
-                System.out.println("Starting OpenGL resource initialization for Mesh: " + this);
-
                 GL41.glBindVertexArray(vao);
 
                 GL41.glBindBuffer(GL41.GL_ARRAY_BUFFER, vbo);
@@ -102,10 +98,6 @@ public class Mesh extends Component
                 GL41.glBufferData(GL41.GL_ELEMENT_ARRAY_BUFFER, toBuffer(indices), GL41.GL_DYNAMIC_DRAW);
 
                 GL41.glBindVertexArray(0);
-
-                System.out.println("Completed OpenGL resource initialization for Mesh: " + this);
-
-                return null;
             });
         }
     }
@@ -116,60 +108,91 @@ public class Mesh extends Component
         try
         {
             if (initializationFuture != null)
-                initializationFuture.get(0, TimeUnit.SECONDS); //TODO: Sometimes when 'onLoad' is called concurrently, the future does not complete successfully.
-
-            if (camera == null)
-                return;
-
-            Texture texture = getGameObject().getComponent(Texture.class);
-
-            if (texture == null)
-                texture = Objects.requireNonNull(getGameObject().getComponent(TextureAtlas.class)).getOutputTexture();
-
-            Shader shader = getGameObject().getComponent(Shader.class);
-
-            if (texture == null || shader == null)
-            {
-                System.err.println("Shader or Texture component(s) missing from GameObject: '" + getGameObject().getName() + "'!");
-                return;
-            }
-
-            GL41.glBindVertexArray(vao);
-
-            GL41.glEnableVertexAttribArray(0);
-            GL41.glEnableVertexAttribArray(1);
-            GL41.glEnableVertexAttribArray(2);
-            GL41.glEnableVertexAttribArray(3);
-
-            texture.bind(0);
-
-            shader.bind();
-
-            shader.setShaderUniform("projection", camera.getProjectionMatrix());
-            shader.setShaderUniform("view", camera.getViewMatrix());
-            shader.setShaderUniform("model", getGameObject().getTransform().getModelMatrix());
-
-            GL41.glDrawElements(GL41.GL_TRIANGLES, indices.size(), GL41.GL_UNSIGNED_INT, 0);
-
-            shader.unbind();
-            texture.unbind();
-
-            GL41.glDisableVertexAttribArray(0);
-            GL41.glDisableVertexAttribArray(1);
-            GL41.glDisableVertexAttribArray(2);
-            GL41.glDisableVertexAttribArray(3);
-
-            GL41.glBindVertexArray(0);
-
-            int error = GL41.glGetError();
-
-            if (error != GL41.GL_NO_ERROR)
-                System.err.println("OpenGL error: " + error);
+                initializationFuture.get(0, TimeUnit.SECONDS);
         }
-        catch (Exception exception)
+        catch (TimeoutException | InterruptedException | ExecutionException _)
         {
-            exception.printStackTrace();
+            return;
         }
+
+        if (initializationFuture == null)
+            return;
+
+        if (camera == null)
+            return;
+
+        Texture texture = getGameObject().getComponent(Texture.class);
+
+        if (texture == null)
+            texture = Objects.requireNonNull(getGameObject().getComponent(TextureAtlas.class)).getOutputTexture();
+
+        Shader shader = getGameObject().getComponent(Shader.class);
+
+        if (texture == null || shader == null)
+        {
+            System.err.println("Shader or Texture component(s) missing from GameObject: '" + getGameObject().getName() + "'!");
+            return;
+        }
+
+        GL41.glBindVertexArray(vao);
+
+        int error = GL41.glGetError();
+
+        if (error != GL41.GL_NO_ERROR)
+            System.err.println("OpenGL error at VAO binding: " + error + " | " + this);
+
+        GL41.glEnableVertexAttribArray(0);
+        GL41.glEnableVertexAttribArray(1);
+        GL41.glEnableVertexAttribArray(2);
+        GL41.glEnableVertexAttribArray(3);
+
+        if (error != GL41.GL_NO_ERROR)
+            System.err.println("OpenGL error at vertex attribute array binding: " + error + " | " + this);
+
+        texture.bind(0);
+
+        if (error != GL41.GL_NO_ERROR)
+            System.err.println("OpenGL error at texture binding: " + error + " | " + this);
+
+        shader.bind();
+
+        if (error != GL41.GL_NO_ERROR)
+            System.err.println("OpenGL error at shader binding: " + error + " | " + this);
+
+        shader.setShaderUniform("projection", camera.getProjectionMatrix());
+        shader.setShaderUniform("view", camera.getViewMatrix());
+        shader.setShaderUniform("model", getGameObject().getTransform().getModelMatrix());
+
+        if (error != GL41.GL_NO_ERROR)
+            System.err.println("OpenGL error at shader uniform binding: " + error + " | " + this);
+
+        GL41.glDrawElements(GL41.GL_TRIANGLES, indices.size(), GL41.GL_UNSIGNED_INT, 0);
+
+        if (error != GL41.GL_NO_ERROR)
+            System.err.println("OpenGL error at drawing: " + error + " | " + this);
+
+        shader.unbind();
+
+        if (error != GL41.GL_NO_ERROR)
+            System.err.println("OpenGL error at shader unbinding: " + error + " | " + this);
+
+        texture.unbind();
+
+        if (error != GL41.GL_NO_ERROR)
+            System.err.println("OpenGL error at texture unbinding: " + error + " | " + this);
+
+        GL41.glDisableVertexAttribArray(0);
+        GL41.glDisableVertexAttribArray(1);
+        GL41.glDisableVertexAttribArray(2);
+        GL41.glDisableVertexAttribArray(3);
+
+        if (error != GL41.GL_NO_ERROR)
+            System.err.println("OpenGL error at vertex attribute array unbinding: " + error + " | " + this);
+
+        GL41.glBindVertexArray(0);
+
+        if (error != GL41.GL_NO_ERROR)
+            System.err.println("OpenGL error at VAO unbinding: " + error + " | " + this);
     }
 
     public @NotNull List<Vertex> getVertices()

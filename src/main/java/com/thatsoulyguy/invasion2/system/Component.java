@@ -12,6 +12,7 @@ import java.io.Serializable;
 public abstract class Component implements Serializable
 {
     private @EffectivelyNotNull transient GameObject gameObject;
+    private boolean isTransient = false;
 
     public void initialize() { }
     public void update() { }
@@ -41,5 +42,15 @@ public abstract class Component implements Serializable
     private void readObject(java.io.ObjectInputStream in) throws IOException, ClassNotFoundException
     {
         in.defaultReadObject();
+    }
+
+    public void setTransient(boolean isTransient)
+    {
+        this.isTransient = isTransient;
+    }
+
+    public boolean getTransient()
+    {
+        return isTransient;
     }
 }

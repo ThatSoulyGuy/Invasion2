@@ -5,6 +5,7 @@ import com.thatsoulyguy.invasion2.block.BlockRegistry;
 import com.thatsoulyguy.invasion2.render.Mesh;
 import com.thatsoulyguy.invasion2.render.Vertex;
 import com.thatsoulyguy.invasion2.system.Component;
+import com.thatsoulyguy.invasion2.thread.MainThreadExecutor;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector2f;
@@ -23,24 +24,9 @@ public class Chunk extends Component
     private transient List<Vertex> vertices = new ArrayList<>();
     private transient List<Integer> indices = new ArrayList<>();
 
-    private final short[][][] blocks = new short[SIZE][SIZE][SIZE];
+    private short[][][] blocks;
 
     private Chunk() { }
-
-    @Override
-    public void initialize()
-    {
-        for (int x = 0; x < SIZE; x++)
-        {
-            for (int y = 0; y < SIZE; y++)
-            {
-                for (int z = 0; z < SIZE; z++)
-                {
-                    blocks[x][y][z] = BlockRegistry.BLOCK_GRASS.getID();
-                }
-            }
-        }
-    }
 
     @Override
     public void onLoad()
@@ -94,10 +80,18 @@ public class Chunk extends Component
             return;
         }
 
-        mesh.setVertices(vertices);
-        mesh.setIndices(indices);
+        mesh.setTransient(true);
 
-        mesh.onLoad();
+        if (!vertices.isEmpty() && !indices.isEmpty())
+        {
+            MainThreadExecutor.submit(() ->
+            {
+                mesh.setVertices(vertices);
+                mesh.setIndices(indices);
+            });
+
+            mesh.onLoad();
+        }
     }
 
     private boolean shouldRenderFace(@NotNull Vector3i position)
@@ -229,6 +223,15 @@ public class Chunk extends Component
 
     public static @NotNull Chunk create()
     {
-        return new Chunk();
+        return create(new short[SIZE][SIZE][SIZE]);
+    }
+
+    public static @NotNull Chunk create(short[][][] blocks)
+    {
+        Chunk result = new Chunk();
+
+        result.blocks = blocks;
+
+        return result;
     }
 }

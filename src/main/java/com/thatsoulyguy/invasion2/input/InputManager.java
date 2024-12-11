@@ -20,6 +20,8 @@ public class InputManager
     private static final @NotNull Vector2f lastMousePosition = new Vector2f();
     private static final @NotNull Vector2f mouseDelta = new Vector2f();
 
+    private static @NotNull MouseMode mouseMode = MouseMode.UNKNOWN;
+
     private static float scrollOffset = 0.0f;
 
     private static @EffectivelyNotNull GLFWKeyCallback keyCallback;
@@ -109,13 +111,20 @@ public class InputManager
         scrollOffset = 0.0f;
     }
 
-    public static void setMouseMode(MouseMode mode)
+    public static void setMouseMode(@NotNull MouseMode mode)
     {
         switch (mode)
         {
             case FREE -> GLFW.glfwSetInputMode(Window.getHandle(), GLFW.GLFW_CURSOR, GLFW.GLFW_CURSOR_NORMAL);
             case LOCKED -> GLFW.glfwSetInputMode(Window.getHandle(), GLFW.GLFW_CURSOR, GLFW.GLFW_CURSOR_DISABLED);
         }
+
+        mouseMode = mode;
+    }
+
+    public static @NotNull MouseMode getMouseMode()
+    {
+        return mouseMode;
     }
 
     public static boolean getKeyState(KeyCode code, KeyState state)

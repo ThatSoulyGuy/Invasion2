@@ -21,8 +21,10 @@ public class Level
     public static @NotNull Level create(@NotNull String name)
     {
         Level result = new Level();
+
         result.name = name;
         result.gameObjectNames = new ArrayList<>();
+
         return result;
     }
 
@@ -30,6 +32,8 @@ public class Level
     {
         if (!gameObjectNames.contains(gameObjectName))
             gameObjectNames.add(gameObjectName);
+        else
+            System.err.println("Game object: '" + gameObjectName + "' already exists!");
     }
 
     public void removeGameObject(@NotNull String gameObjectName)

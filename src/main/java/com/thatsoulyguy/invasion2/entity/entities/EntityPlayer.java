@@ -36,6 +36,14 @@ public class EntityPlayer extends Entity
     {
         super.update();
 
+        if (InputManager.getKeyState(KeyCode.ESCAPE, KeyState.PRESSED))
+        {
+            if (InputManager.getMouseMode() == MouseMode.LOCKED)
+                InputManager.setMouseMode(MouseMode.FREE);
+            else
+                InputManager.setMouseMode(MouseMode.LOCKED);
+        }
+
         updateMouselook();
         updateMovement();
     }

@@ -4,16 +4,14 @@ import com.thatsoulyguy.invasion2.annotation.CustomConstructor;
 import com.thatsoulyguy.invasion2.annotation.EffectivelyNotNull;
 import com.thatsoulyguy.invasion2.math.Transform;
 import com.thatsoulyguy.invasion2.render.Camera;
-import com.thatsoulyguy.invasion2.render.TextureManager;
 import com.thatsoulyguy.invasion2.util.ManagerLinkedClass;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
 
 import java.io.*;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.ReentrantLock;
@@ -26,6 +24,8 @@ public class GameObject implements Serializable
 
     private @Nullable transient GameObject parent;
     private final @NotNull ConcurrentMap<String, GameObject> children = new ConcurrentHashMap<>();
+
+    private boolean isActive = true;
 
     private GameObject() { }
 
@@ -117,6 +117,9 @@ public class GameObject implements Serializable
 
     public void update()
     {
+        if (!isActive)
+            return;
+
         componentMap.values().parallelStream().forEach(Component::update);
 
         synchronized (children)
@@ -127,6 +130,9 @@ public class GameObject implements Serializable
 
     public void render(@Nullable Camera camera)
     {
+        if (!isActive)
+            return;
+
         componentMap.values().forEach((component) -> component.render(camera));
 
         synchronized (children)
@@ -135,7 +141,7 @@ public class GameObject implements Serializable
         }
     }
 
-    public void save(@NotNull File file) //TODO: Very slow; change approach to treat chunks as 'different' for faster saving
+    public void save(@NotNull File file)
     {
         try (FileOutputStream fileOutputStream = new FileOutputStream(file); ObjectOutputStream objectOutputStream = new ObjectOutputStream(fileOutputStream))
         {
@@ -148,26 +154,43 @@ public class GameObject implements Serializable
             ExecutorService componentExecutor = Executors.newVirtualThreadPerTaskExecutor();
 
             List<Future<?>> componentFutures = new ArrayList<>();
-
-            for (Component component : componentMap.values())
-            {
+            componentMap.forEach(((aClass, component) ->
                 componentFutures.add(componentExecutor.submit(() ->
                 {
                     try
                     {
                         System.out.println("Saving component '" + component.getClass().getSimpleName() + "' on game object '" + name + "'...");
 
-                        synchronized (objectOutputStream)
+                        component.onUnload();
+
+                        if (component.getTransient())
                         {
-                            objectOutputStream.writeObject(component);
+                            Constructor<?> constructor = aClass.getDeclaredConstructor();
+
+                            constructor.setAccessible(true);
+
+                            Component newComponent = (Component) constructor.newInstance();
+
+                            newComponent.setTransient(true);
+
+                            synchronized (objectOutputStream)
+                            {
+                                objectOutputStream.writeObject(newComponent);
+                            }
+                        }
+                        else
+                        {
+                            synchronized (objectOutputStream)
+                            {
+                                objectOutputStream.writeObject(component);
+                            }
                         }
                     }
-                    catch (IOException e)
+                    catch (NoSuchMethodException | IOException | InstantiationException | IllegalAccessException | InvocationTargetException e)
                     {
                         throw new RuntimeException(e);
                     }
-                }));
-            }
+                }))));
 
             componentExecutor.shutdown();
 
@@ -203,7 +226,7 @@ public class GameObject implements Serializable
         }
     }
 
-    public static @NotNull GameObject load(@NotNull File file) //TODO: Very slow; change approach to treat chunks as 'different' for faster loading
+    public static @NotNull GameObject load(@NotNull File file)
     {
         GameObject result = new GameObject();
         ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
@@ -226,13 +249,32 @@ public class GameObject implements Serializable
                 {
                     Object object = objectInputStream.readObject();
 
-                    if (object instanceof Component component)
+                    switch (object)
                     {
-                        System.out.println("Deserialized component '" + component.getClass().getSimpleName() + "'.");
-                        result.addComponent(component);
+                        case Transform component ->
+                        {
+                            System.out.println("Deserialized component '" + component.getClass().getSimpleName() + "'.");
+                            result.addComponent(component);
+                        }
+
+                        case ManagerLinkedClass linkedClass ->
+                        {
+                            Component component = (Component) linkedClass.getManagingClass().getMethod("get", String.class).invoke(null, linkedClass.getManagedItem());
+
+                            System.out.println("Deserialized component '" + component.getClass().getSimpleName() + "'.");
+
+                            result.addComponent(component);
+                        }
+
+                        case Component component ->
+                        {
+                            System.out.println("Deserialized component '" + component.getClass().getSimpleName() + "'.");
+
+                            result.addComponent(component);
+                        }
+
+                        case null, default -> System.err.println("Invalid component found during deserialization.");
                     }
-                    else
-                        System.err.println("Invalid component found during deserialization.");
                 }
 
                 System.out.println("Components loaded for game object: " + result.name);
@@ -276,6 +318,16 @@ public class GameObject implements Serializable
         return result;
     }
 
+    public void setActive(boolean active)
+    {
+        isActive = active;
+    }
+
+    public boolean isActive()
+    {
+        return isActive;
+    }
+
     private boolean isAncestor(@NotNull GameObject potentialAncestor)
     {
         GameObject current = this.parent;
@@ -293,7 +345,12 @@ public class GameObject implements Serializable
 
     public void uninitialize()
     {
-        componentMap.values().forEach(Component::uninitialize);
+        isActive = false;
+
+        componentMap.values().stream()
+                .filter(component -> !(component instanceof Transform))
+                .forEach(Component::uninitialize);
+
         componentMap.clear();
 
         synchronized (children)
