@@ -174,7 +174,7 @@ public class World extends Component
     @Override
     public void uninitialize()
     {
-        chunkGenerationExecutor.shutdown(); //TODO: HOW THE F*** IS THIS NULL?!??!?! IT IS FINAL AND SET IN THE CONSTRUCTOR!!!!
+        chunkGenerationExecutor.shutdown();
 
         try
         {
