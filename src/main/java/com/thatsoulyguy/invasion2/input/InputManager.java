@@ -7,6 +7,8 @@ import org.jetbrains.annotations.NotNull;
 import org.joml.Vector2f;
 import org.lwjgl.glfw.*;
 
+import java.util.Arrays;
+
 @Static
 public class InputManager
 {
@@ -24,10 +26,13 @@ public class InputManager
 
     private static float scrollOffset = 0.0f;
 
+    private static final Object keyStateLock = new Object();
+
     private static @EffectivelyNotNull GLFWKeyCallback keyCallback;
     private static @EffectivelyNotNull GLFWMouseButtonCallback mouseButtonCallback;
     private static @EffectivelyNotNull GLFWCursorPosCallback mousePositionCallback;
     private static @EffectivelyNotNull GLFWScrollCallback scrollCallback;
+    private static @EffectivelyNotNull GLFWWindowFocusCallback focusCallback;
 
     private InputManager() { }
 
@@ -40,17 +45,17 @@ public class InputManager
             {
                 if (key < 0 || key >= GLFW.GLFW_KEY_LAST)
                     return;
-
-                switch (action)
+                synchronized (keyStateLock)
                 {
-                    case GLFW.GLFW_PRESS, GLFW.GLFW_REPEAT:
-                        currentKeyStates[key] = true;
-                        break;
-                    case GLFW.GLFW_RELEASE:
-                        currentKeyStates[key] = false;
-                        break;
-                    default:
-                        break;
+                    switch (action)
+                    {
+                        case GLFW.GLFW_PRESS, GLFW.GLFW_REPEAT:
+                            currentKeyStates[key] = true;
+                            break;
+                        case GLFW.GLFW_RELEASE:
+                            currentKeyStates[key] = false;
+                            break;
+                    }
                 }
             }
         };
@@ -97,11 +102,29 @@ public class InputManager
                 scrollOffset += (float) yoffset;
             }
         };
+
+        focusCallback = new GLFWWindowFocusCallback()
+        {
+            @Override
+            public void invoke(long windowHandle, boolean focused)
+            {
+                synchronized (keyStateLock)
+                {
+                    if (!focused)
+                    {
+                        Arrays.fill(currentKeyStates, false);
+                        Arrays.fill(previousKeyStates, false);
+                    }
+                }            }
+        };
     }
 
     public static void update()
     {
-        System.arraycopy(currentKeyStates, 0, previousKeyStates, 0, currentKeyStates.length);
+        synchronized (keyStateLock)
+        {
+            System.arraycopy(currentKeyStates, 0, previousKeyStates, 0, currentKeyStates.length);
+        }
 
         System.arraycopy(currentMouseButtonStates, 0, previousMouseButtonStates, 0, currentMouseButtonStates.length);
 
@@ -119,6 +142,8 @@ public class InputManager
             case LOCKED -> GLFW.glfwSetInputMode(Window.getHandle(), GLFW.GLFW_CURSOR, GLFW.GLFW_CURSOR_DISABLED);
         }
 
+        System.arraycopy(currentKeyStates, 0, previousKeyStates, 0, currentKeyStates.length);
+
         mouseMode = mode;
     }
 
@@ -134,12 +159,15 @@ public class InputManager
         if (key < 0 || key >= GLFW.GLFW_KEY_LAST)
             return false;
 
-        return switch (state)
+        synchronized (keyStateLock)
         {
-            case PRESSED -> currentKeyStates[key] && !previousKeyStates[key];
-            case HELD -> currentKeyStates[key] && previousKeyStates[key];
-            case RELEASED -> !currentKeyStates[key] && previousKeyStates[key];
-        };
+            return switch (state)
+            {
+                case PRESSED -> currentKeyStates[key] && !previousKeyStates[key];
+                case HELD -> currentKeyStates[key] && previousKeyStates[key];
+                case RELEASED -> !currentKeyStates[key] && previousKeyStates[key];
+            };
+        }
     }
 
     public static boolean getMouseState(MouseCode code, MouseState state)
@@ -190,6 +218,11 @@ public class InputManager
     public static @NotNull GLFWScrollCallback getScrollCallback()
     {
         return scrollCallback;
+    }
+
+    public static @NotNull GLFWWindowFocusCallback getFocusCallback()
+    {
+        return focusCallback;
     }
 
     public static void uninitialize()

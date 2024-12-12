@@ -17,17 +17,14 @@ import com.thatsoulyguy.invasion2.world.TextureAtlas;
 import com.thatsoulyguy.invasion2.world.TextureAtlasManager;
 import com.thatsoulyguy.invasion2.world.World;
 import org.joml.Vector2i;
+import org.joml.Vector3f;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWVidMode;
 
 import java.util.Objects;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public class Invasion2
 {
-    private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
-
     private @EffectivelyNotNull GameObject player;
     private @EffectivelyNotNull GameObject world;
 
@@ -87,6 +84,8 @@ public class Invasion2
 
         player = GameObject.create("player");
 
+        player.getTransform().setLocalPosition(new Vector3f(0.0f, 100.0f, 0.0f));
+
         player.addComponent(Entity.create(EntityPlayer.class));
 
         world = GameObject.create("world");
@@ -99,7 +98,8 @@ public class Invasion2
     {
         Objects.requireNonNull(Objects.requireNonNull(GameObjectManager.get("world")).getComponent(World.class)).chunkLoader = Objects.requireNonNull(GameObjectManager.get("player")).getTransform();
 
-        GameObjectManager.getAll().forEach(gameObject -> executor.submit(gameObject::update));
+        GameObjectManager.update();
+
         MainThreadExecutor.execute();
 
         InputManager.update();

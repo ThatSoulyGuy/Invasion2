@@ -7,6 +7,7 @@ import com.thatsoulyguy.invasion2.input.KeyState;
 import com.thatsoulyguy.invasion2.input.MouseMode;
 import com.thatsoulyguy.invasion2.render.Camera;
 import com.thatsoulyguy.invasion2.system.GameObject;
+import com.thatsoulyguy.invasion2.util.SerializableObject;
 import org.jetbrains.annotations.NotNull;
 import org.joml.Vector2f;
 import org.joml.Vector3f;
@@ -36,14 +37,7 @@ public class EntityPlayer extends Entity
     {
         super.update();
 
-        if (InputManager.getKeyState(KeyCode.ESCAPE, KeyState.PRESSED))
-        {
-            if (InputManager.getMouseMode() == MouseMode.LOCKED)
-                InputManager.setMouseMode(MouseMode.FREE);
-            else
-                InputManager.setMouseMode(MouseMode.LOCKED);
-        }
-
+        updateControls();
         updateMouselook();
         updateMovement();
     }
@@ -81,6 +75,17 @@ public class EntityPlayer extends Entity
     public @NotNull Camera getCamera()
     {
         return camera;
+    }
+
+    private void updateControls()
+    {
+        if (InputManager.getKeyState(KeyCode.ESCAPE, KeyState.PRESSED))
+        {
+            if (InputManager.getMouseMode() == MouseMode.LOCKED)
+                InputManager.setMouseMode(MouseMode.FREE);
+            else
+                InputManager.setMouseMode(MouseMode.LOCKED);
+        }
     }
 
     private void updateMouselook()

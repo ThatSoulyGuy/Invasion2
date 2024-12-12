@@ -26,14 +26,31 @@ public class TerrainGenerator implements Serializable
      */
     private int getHeight(int x, int z)
     {
-        double noiseValue = OpenSimplex2.noise2(seed, x * scale, z * scale);
+        double flatnessControl = OpenSimplex2.noise2(seed + 300, x * scale * 0.1, z * scale * 0.1);
 
-        noiseValue = (noiseValue + 1) / 2.0;
+        flatnessControl = (flatnessControl + 1) / 2.0;
+
+        double hillThreshold = 0.7;
+
+        double baseNoise = OpenSimplex2.noise2(seed, x * scale, z * scale);
+        baseNoise = (baseNoise + 1) / 2.0;
+
+        double hillNoise = 0;
+
+        if (flatnessControl > hillThreshold)
+        {
+            hillNoise = OpenSimplex2.noise2(seed + 100, x * scale * 0.5, z * scale * 0.5);
+            hillNoise = (hillNoise + 1) / 2.0;
+        }
+
+        double combinedNoise = flatnessControl <= hillThreshold
+                ? baseNoise * 0.2
+                : (0.3 * baseNoise + 0.7 * hillNoise);
 
         int maxTerrainHeight = World.WORLD_HEIGHT;
-
-        return (int) (noiseValue * maxTerrainHeight);
+        return (int) (combinedNoise * maxTerrainHeight);
     }
+
 
     /**
      * Fills the blocks array based on the generated height.

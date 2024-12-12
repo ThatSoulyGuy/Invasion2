@@ -38,7 +38,7 @@ public class World extends Component
     private final @NotNull Set<Vector3i> generatingChunks = ConcurrentHashMap.newKeySet();
 
     private final @NotNull TerrainGenerator terrainGenerator = TerrainGenerator.create(
-            0.01,
+            0.006,
             Chunk.SIZE,
             12345L
     );
@@ -50,7 +50,7 @@ public class World extends Component
     private World() { }
 
     @Override
-    public void onLoad()
+    public void initialize()
     {
         generatingChunks.clear();
         chunkGenerationExecutor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() / 2);

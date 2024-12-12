@@ -15,6 +15,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 @CustomConstructor("create")
 public class GameObject implements Serializable
@@ -24,6 +25,8 @@ public class GameObject implements Serializable
 
     private @Nullable transient GameObject parent;
     private final @NotNull ConcurrentMap<String, GameObject> children = new ConcurrentHashMap<>();
+
+    private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
     private boolean isActive = true;
 
@@ -120,11 +123,17 @@ public class GameObject implements Serializable
         if (!isActive)
             return;
 
-        componentMap.values().parallelStream().forEach(Component::update);
+        lock.writeLock().lock();
 
-        synchronized (children)
+        try
         {
+            componentMap.values().forEach(Component::update);
+
             children.values().forEach(GameObject::update);
+        }
+        finally
+        {
+            lock.writeLock().unlock();
         }
     }
 
@@ -133,11 +142,20 @@ public class GameObject implements Serializable
         if (!isActive)
             return;
 
-        componentMap.values().forEach((component) -> component.render(camera));
+        lock.readLock().lock();
 
-        synchronized (children)
+        try
         {
-            children.values().forEach((gameObject) -> gameObject.render(camera));
+            componentMap.values().forEach((component) -> component.render(camera));
+
+            synchronized (children)
+            {
+                children.values().forEach((gameObject) -> gameObject.render(camera));
+            }
+        }
+        finally
+        {
+            lock.readLock().unlock();
         }
     }
 
@@ -328,6 +346,11 @@ public class GameObject implements Serializable
         return isActive;
     }
 
+    public final @NotNull ReentrantReadWriteLock getLock()
+    {
+        return lock;
+    }
+
     private boolean isAncestor(@NotNull GameObject potentialAncestor)
     {
         GameObject current = this.parent;
@@ -345,19 +368,27 @@ public class GameObject implements Serializable
 
     public void uninitialize()
     {
-        isActive = false;
+        lock.writeLock().lock();
 
-        componentMap.values().stream()
-                .filter(component -> !(component instanceof Transform))
-                .forEach(Component::uninitialize);
-
-        componentMap.clear();
-
-        synchronized (children)
+        try
         {
-            children.values().forEach(GameObject::uninitialize);
+            isActive = false;
 
-            children.clear();
+            componentMap.values().stream()
+                    .filter(component -> !(component instanceof Transform))
+                    .forEach(Component::uninitialize);
+
+            componentMap.clear();
+
+            synchronized (children)
+            {
+                children.values().forEach(GameObject::uninitialize);
+                children.clear();
+            }
+        }
+        finally
+        {
+            lock.writeLock().unlock();
         }
     }
 

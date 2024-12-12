@@ -7,14 +7,15 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.*;
 
 @Static
 @Manager(GameObject.class)
 public class GameObjectManager
 {
     private static final ConcurrentMap<String, GameObject> gameObjectMap = new ConcurrentHashMap<>();
+
+    private static final ExecutorService executor = Executors.newCachedThreadPool();
 
     private GameObjectManager() { }
 
@@ -52,6 +53,23 @@ public class GameObjectManager
         return List.copyOf(gameObjectMap.values());
     }
 
+    public static void update()
+    {
+        gameObjectMap.values().forEach(gameObject -> executor.submit(() ->
+        {
+            gameObject.getLock().writeLock().lock();
+
+            try
+            {
+                gameObject.update();
+            }
+            finally
+            {
+                gameObject.getLock().writeLock().unlock();
+            }
+        }));
+    }
+
     public static void render(@Nullable Camera camera)
     {
         for (GameObject gameObject : gameObjectMap.values())
@@ -65,6 +83,18 @@ public class GameObjectManager
 
     public static void uninitialize()
     {
+        executor.shutdown();
+
+        try
+        {
+            executor.awaitTermination(1, TimeUnit.MINUTES);
+        }
+        catch (InterruptedException e)
+        {
+            Thread.currentThread().interrupt();
+            System.err.println("GameObject update tasks were interrupted.");
+        }
+
         gameObjectMap.values().forEach(GameObject::uninitialize);
 
         gameObjectMap.clear();

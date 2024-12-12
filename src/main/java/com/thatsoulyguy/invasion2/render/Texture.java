@@ -90,6 +90,9 @@ public class Texture extends Component implements ManagerLinkedClass
             GL41.glTexParameteri(GL41.GL_TEXTURE_2D, GL41.GL_TEXTURE_WRAP_T, wrapping.getValue());
             GL41.glTexParameteri(GL41.GL_TEXTURE_2D, GL41.GL_TEXTURE_MIN_FILTER, filter.getValue());
             GL41.glTexParameteri(GL41.GL_TEXTURE_2D, GL41.GL_TEXTURE_MAG_FILTER, filter.getValue());
+            GL41.glTexParameteri(GL41.GL_TEXTURE_2D, GL41.GL_GENERATE_MIPMAP, GL41.GL_TRUE);
+
+            GL41.glGenerateMipmap(textureId);
 
             GL41.glBindTexture(GL41.GL_TEXTURE_2D, 0);
 
