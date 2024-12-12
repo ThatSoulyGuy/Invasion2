@@ -65,9 +65,6 @@ public class World extends Component
 
     public @NotNull Chunk generateChunk(@NotNull Vector3i chunkPosition)
     {
-        if (loadedChunks.contains(chunkPosition)) //TODO: Hack; Address the root cause of multiple threads trying to generate the same chunk
-            return Objects.requireNonNull(GameObjectManager.get("chunk_" + chunkPosition.x + "_" + chunkPosition.y + "_" + chunkPosition.z).getComponent(Chunk.class));
-
         GameObject object = GameObject.create("chunk_" + chunkPosition.x + "_" + chunkPosition.y + "_" + chunkPosition.z);
 
         object.getTransform().setLocalPosition(CoordinateHelper.chunkToWorldCoordinates(chunkPosition));

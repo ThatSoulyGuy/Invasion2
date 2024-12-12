@@ -39,7 +39,6 @@ public class Window
         GLFW.glfwSetMouseButtonCallback(handle, InputManager.getMouseButtonCallback());
         GLFW.glfwSetCursorPosCallback(handle, InputManager.getMousePositionCallback());
         GLFW.glfwSetScrollCallback(handle, InputManager.getScrollCallback());
-        GLFW.glfwSetWindowFocusCallback(handle, InputManager.getFocusCallback());
 
         GLFW.glfwShowWindow(handle);
 

@@ -9,7 +9,7 @@ import org.joml.Vector3i;
 import java.io.Serializable;
 
 @CustomConstructor("create")
-public class TerrainGenerator implements Serializable
+public class TerrainGenerator implements Serializable //TODO: Add a system where multiple terrain generators all contribute to final terrain
 {
     private double scale;
     private int chunkSize;
@@ -27,7 +27,6 @@ public class TerrainGenerator implements Serializable
     private int getHeight(int x, int z)
     {
         double flatnessControl = OpenSimplex2.noise2(seed + 300, x * scale * 0.1, z * scale * 0.1);
-
         flatnessControl = (flatnessControl + 1) / 2.0;
 
         double hillThreshold = 0.7;
@@ -48,7 +47,12 @@ public class TerrainGenerator implements Serializable
                 : (0.3 * baseNoise + 0.7 * hillNoise);
 
         int maxTerrainHeight = World.WORLD_HEIGHT;
-        return (int) (combinedNoise * maxTerrainHeight);
+
+        int rawHeight = (int) (combinedNoise * maxTerrainHeight);
+
+        int minHeight = 6 * chunkSize;
+
+        return rawHeight + minHeight;
     }
 
 

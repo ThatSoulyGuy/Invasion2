@@ -3,6 +3,7 @@ package com.thatsoulyguy.invasion2.input;
 import com.thatsoulyguy.invasion2.annotation.EffectivelyNotNull;
 import com.thatsoulyguy.invasion2.annotation.Static;
 import com.thatsoulyguy.invasion2.core.Window;
+import com.thatsoulyguy.invasion2.thread.MainThreadExecutor;
 import org.jetbrains.annotations.NotNull;
 import org.joml.Vector2f;
 import org.lwjgl.glfw.*;
@@ -32,7 +33,6 @@ public class InputManager
     private static @EffectivelyNotNull GLFWMouseButtonCallback mouseButtonCallback;
     private static @EffectivelyNotNull GLFWCursorPosCallback mousePositionCallback;
     private static @EffectivelyNotNull GLFWScrollCallback scrollCallback;
-    private static @EffectivelyNotNull GLFWWindowFocusCallback focusCallback;
 
     private InputManager() { }
 
@@ -102,30 +102,11 @@ public class InputManager
                 scrollOffset += (float) yoffset;
             }
         };
-
-        focusCallback = new GLFWWindowFocusCallback()
-        {
-            @Override
-            public void invoke(long windowHandle, boolean focused)
-            {
-                synchronized (keyStateLock)
-                {
-                    if (!focused)
-                    {
-                        Arrays.fill(currentKeyStates, false);
-                        Arrays.fill(previousKeyStates, false);
-                    }
-                }            }
-        };
     }
 
     public static void update()
     {
-        synchronized (keyStateLock)
-        {
-            System.arraycopy(currentKeyStates, 0, previousKeyStates, 0, currentKeyStates.length);
-        }
-
+        System.arraycopy(currentKeyStates, 0, previousKeyStates, 0, currentKeyStates.length);
         System.arraycopy(currentMouseButtonStates, 0, previousMouseButtonStates, 0, currentMouseButtonStates.length);
 
         mouseDelta.set(mousePosition).sub(lastMousePosition);
@@ -136,11 +117,14 @@ public class InputManager
 
     public static void setMouseMode(@NotNull MouseMode mode)
     {
-        switch (mode)
+        MainThreadExecutor.submit(() ->
         {
-            case FREE -> GLFW.glfwSetInputMode(Window.getHandle(), GLFW.GLFW_CURSOR, GLFW.GLFW_CURSOR_NORMAL);
-            case LOCKED -> GLFW.glfwSetInputMode(Window.getHandle(), GLFW.GLFW_CURSOR, GLFW.GLFW_CURSOR_DISABLED);
-        }
+            switch (mode)
+            {
+                case FREE -> GLFW.glfwSetInputMode(Window.getHandle(), GLFW.GLFW_CURSOR, GLFW.GLFW_CURSOR_NORMAL);
+                case LOCKED -> GLFW.glfwSetInputMode(Window.getHandle(), GLFW.GLFW_CURSOR, GLFW.GLFW_CURSOR_DISABLED);
+            }
+        });
 
         System.arraycopy(currentKeyStates, 0, previousKeyStates, 0, currentKeyStates.length);
 
@@ -218,11 +202,6 @@ public class InputManager
     public static @NotNull GLFWScrollCallback getScrollCallback()
     {
         return scrollCallback;
-    }
-
-    public static @NotNull GLFWWindowFocusCallback getFocusCallback()
-    {
-        return focusCallback;
     }
 
     public static void uninitialize()

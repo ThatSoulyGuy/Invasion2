@@ -57,8 +57,8 @@ public class Invasion2
         int scaledScreenWidth = (int) (screenWidth * scalingFactor);
         int scaledScreenHeight = (int) (screenHeight * scalingFactor);
 
-        int windowWidth = scaledScreenWidth / 4;
-        int windowHeight = scaledScreenHeight / 4;
+        int windowWidth = scaledScreenWidth / 2;
+        int windowHeight = scaledScreenHeight / 2;
 
         Vector2i windowSize = new Vector2i(windowWidth, windowHeight);
 
