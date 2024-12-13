@@ -58,7 +58,7 @@ public class ManagerAnnotationProcessor extends AbstractProcessor
                 );
             }
 
-            if (!validateMethod(classElement, "unregister", "java.lang.String", true, true, null, false, false))
+            if (!validateMethod(classElement, "unregister", "any", true, true, null, false, false))
             {
                 processingEnv.getMessager().printMessage(
                         Diagnostic.Kind.ERROR,
@@ -67,7 +67,7 @@ public class ManagerAnnotationProcessor extends AbstractProcessor
                 );
             }
 
-            if (!validateMethod(classElement, "get", "java.lang.String", true, false, managedClass, true, true))
+            if (!validateMethod(classElement, "get", "any", true, false, managedClass, true, true))
             {
                 processingEnv.getMessager().printMessage(
                         Diagnostic.Kind.ERROR,
@@ -81,15 +81,6 @@ public class ManagerAnnotationProcessor extends AbstractProcessor
                 processingEnv.getMessager().printMessage(
                         Diagnostic.Kind.ERROR,
                         "Method getAll must return a @NotNull List<" + managedClass + "> and must not have parameters.",
-                        classElement
-                );
-            }
-
-            if (!validateMethod(classElement, "uninitialize", null, false, false, null, false, false))
-            {
-                processingEnv.getMessager().printMessage(
-                        Diagnostic.Kind.ERROR,
-                        "Method uninitialize must have no parameters and no return value.",
                         classElement
                 );
             }
@@ -154,9 +145,9 @@ public class ManagerAnnotationProcessor extends AbstractProcessor
                     }
                     else
                     {
-                        VariableElement parameter = parameters.get(0);
+                        VariableElement parameter = parameters.getFirst();
 
-                        if (!processingEnv.getTypeUtils().erasure(parameter.asType()).toString().equals(parameterTypeName))
+                        if (!processingEnv.getTypeUtils().erasure(parameter.asType()).toString().equals(parameterTypeName) && !parameterTypeName.equals("any"))
                         {
                             processingEnv.getMessager().printMessage(
                                     Diagnostic.Kind.ERROR,

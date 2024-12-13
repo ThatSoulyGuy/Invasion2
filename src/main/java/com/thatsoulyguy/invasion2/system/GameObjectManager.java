@@ -6,16 +6,19 @@ import com.thatsoulyguy.invasion2.render.Camera;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Static
 @Manager(GameObject.class)
 public class GameObjectManager
 {
-    private static final ConcurrentMap<String, GameObject> gameObjectMap = new ConcurrentHashMap<>();
-
-    private static final ExecutorService executor = Executors.newCachedThreadPool();
+    private static final @NotNull ConcurrentMap<String, GameObject> gameObjectMap = new ConcurrentHashMap<>();
+    private static final @NotNull ExecutorService executor = Executors.newCachedThreadPool();
+    private static final @NotNull BlockingQueue<GameObject> uninitializeQueue = new LinkedBlockingQueue<>();
+    private static final @NotNull AtomicBoolean isUpdating = new AtomicBoolean(false);
 
     private GameObjectManager() { }
 
@@ -34,13 +37,16 @@ public class GameObjectManager
 
     public static void unregister(@NotNull String name, boolean uninitialize)
     {
-        if (gameObjectMap.containsKey(name) && LevelManager.getCurrentLevel() != null)
+        GameObject gameObject = gameObjectMap.remove(name);
+
+        if (gameObject == null)
+            return;
+
+        if (LevelManager.getCurrentLevel() != null)
             LevelManager.getCurrentLevel().removeGameObject(name);
 
-        if (uninitialize && gameObjectMap.containsKey(name))
-            gameObjectMap.get(name).uninitialize();
-
-        gameObjectMap.remove(name);
+        if (uninitialize)
+            uninitializeQueue.add(gameObject);
     }
 
     public static @Nullable GameObject get(@NotNull String name)
@@ -55,19 +61,45 @@ public class GameObjectManager
 
     public static void update()
     {
-        gameObjectMap.values().forEach(gameObject -> executor.submit(() ->
-        {
-            gameObject.getLock().writeLock().lock();
+        isUpdating.set(true);
+        List<Future<?>> updateTasks = new ArrayList<>();
 
+        for (GameObject gameObject : gameObjectMap.values())
+        {
+            updateTasks.add(executor.submit(() ->
+            {
+                if (gameObject.isActive())
+                    gameObject.update();
+            }));
+        }
+
+        for (Future<?> task : updateTasks)
+        {
             try
             {
-                gameObject.update();
+                task.get();
             }
-            finally
+            catch (Exception e)
             {
-                gameObject.getLock().writeLock().unlock();
+                System.err.println("Error in GameObject update task: " + e.getMessage());
             }
-        }));
+        }
+
+        isUpdating.set(false);
+
+        processUninitializeQueue();
+    }
+
+    public static void updateSingleThread()
+    {
+        isUpdating.set(true);
+
+        for (GameObject gameObject : gameObjectMap.values())
+            gameObject.updateSingleThread();
+
+        isUpdating.set(false);
+
+        processUninitializeQueue();
     }
 
     public static void render(@Nullable Camera camera)
@@ -79,6 +111,17 @@ public class GameObjectManager
     public static boolean has(@NotNull String name)
     {
         return gameObjectMap.containsKey(name);
+    }
+
+    private static void processUninitializeQueue()
+    {
+        while (!uninitializeQueue.isEmpty())
+        {
+            GameObject gameObject = uninitializeQueue.poll();
+
+            if (gameObject != null)
+                gameObject.uninitialize();
+        }
     }
 
     public static void uninitialize()

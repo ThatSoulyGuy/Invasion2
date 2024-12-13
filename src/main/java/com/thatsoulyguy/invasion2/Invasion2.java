@@ -2,10 +2,12 @@ package com.thatsoulyguy.invasion2;
 
 import com.thatsoulyguy.invasion2.annotation.EffectivelyNotNull;
 import com.thatsoulyguy.invasion2.block.BlockRegistry;
+import com.thatsoulyguy.invasion2.collider.colliders.BoxCollider;
 import com.thatsoulyguy.invasion2.core.Window;
 import com.thatsoulyguy.invasion2.entity.Entity;
 import com.thatsoulyguy.invasion2.entity.entities.EntityPlayer;
 import com.thatsoulyguy.invasion2.input.InputManager;
+import com.thatsoulyguy.invasion2.math.Rigidbody;
 import com.thatsoulyguy.invasion2.render.*;
 import com.thatsoulyguy.invasion2.system.GameObject;
 import com.thatsoulyguy.invasion2.system.GameObjectManager;
@@ -45,22 +47,10 @@ public class Invasion2
         if (vidMode == null)
             throw new RuntimeException("Failed to get video mode");
 
-        int screenWidth = vidMode.width();
-        int screenHeight = vidMode.height();
+        int windowWidth = vidMode.width();
+        int windowHeight = vidMode.height();
 
-        float[] xScale = new float[1];
-        float[] yScale = new float[1];
-        GLFW.glfwGetMonitorContentScale(primaryMonitor, xScale, yScale);
-
-        double scalingFactor = (xScale[0] + yScale[0]) / 2.0;
-
-        int scaledScreenWidth = (int) (screenWidth * scalingFactor);
-        int scaledScreenHeight = (int) (screenHeight * scalingFactor);
-
-        int windowWidth = scaledScreenWidth / 2;
-        int windowHeight = scaledScreenHeight / 2;
-
-        Vector2i windowSize = new Vector2i(windowWidth, windowHeight);
+        Vector2i windowSize = new Vector2i(windowWidth / 2, windowHeight / 2);
 
         MainThreadExecutor.initialize();
 
@@ -84,8 +74,10 @@ public class Invasion2
 
         player = GameObject.create("player");
 
-        player.getTransform().setLocalPosition(new Vector3f(0.0f, 100.0f, 0.0f));
+        player.getTransform().setLocalPosition(new Vector3f(0.0f, 180.0f, 0.0f));
 
+        player.addComponent(BoxCollider.create());
+        player.addComponent(Rigidbody.create());
         player.addComponent(Entity.create(EntityPlayer.class));
 
         world = GameObject.create("world");
@@ -99,6 +91,7 @@ public class Invasion2
         Objects.requireNonNull(Objects.requireNonNull(GameObjectManager.get("world")).getComponent(World.class)).chunkLoader = Objects.requireNonNull(GameObjectManager.get("player")).getTransform();
 
         GameObjectManager.update();
+        GameObjectManager.updateSingleThread();
 
         MainThreadExecutor.execute();
 

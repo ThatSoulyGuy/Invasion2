@@ -2,6 +2,7 @@ package com.thatsoulyguy.invasion2.world;
 
 import com.thatsoulyguy.invasion2.annotation.CustomConstructor;
 import com.thatsoulyguy.invasion2.block.BlockRegistry;
+import com.thatsoulyguy.invasion2.collider.colliders.VoxelMeshCollider;
 import com.thatsoulyguy.invasion2.render.Mesh;
 import com.thatsoulyguy.invasion2.render.Vertex;
 import com.thatsoulyguy.invasion2.system.Component;
@@ -34,6 +35,8 @@ public class Chunk extends Component
         vertices = new ArrayList<>();
         indices = new ArrayList<>();
 
+        List<Vector3f> voxelPositions = new ArrayList<>();
+
         for (int x = 0; x < SIZE; x++)
         {
             for (int y = 0; y < SIZE; y++)
@@ -52,27 +55,58 @@ public class Chunk extends Component
                     }
 
                     if (shouldRenderFace(new Vector3i(x, y, z + 1)))
+                    {
+                        if (!voxelPositions.contains(new Vector3f(x + 0.5f, y + 0.5f, z + 0.5f)))
+                            voxelPositions.add(new Vector3f(x + 0.5f, y + 0.5f, z + 0.5f));
+
                         addFace(new Vector3i(x, y, z), new Vector3i(0, 0, 1), Objects.requireNonNull(BlockRegistry.get(blocks[x][y][z])).getColors()[2], textureAtlas.getSubTextureCoordinates(Objects.requireNonNull(BlockRegistry.get(blocks[x][y][z])).getTextures()[2], 180));
+                    }
 
                     if (shouldRenderFace(new Vector3i(x, y, z - 1)))
+                    {
+                        if (!voxelPositions.contains(new Vector3f(x + 0.5f, y + 0.5f, z + 0.5f)))
+                            voxelPositions.add(new Vector3f(x + 0.5f, y + 0.5f, z + 0.5f));
+
                         addFace(new Vector3i(x, y, z), new Vector3i(0, 0, -1), Objects.requireNonNull(BlockRegistry.get(blocks[x][y][z])).getColors()[3], textureAtlas.getSubTextureCoordinates(Objects.requireNonNull(BlockRegistry.get(blocks[x][y][z])).getTextures()[3], 180));
+                    }
 
                     if (shouldRenderFace(new Vector3i(x, y + 1, z)))
+                    {
+                        if (!voxelPositions.contains(new Vector3f(x + 0.5f, y + 0.5f, z + 0.5f)))
+                            voxelPositions.add(new Vector3f(x + 0.5f, y + 0.5f, z + 0.5f));
+
                         addFace(new Vector3i(x, y, z), new Vector3i(0, 1, 0), Objects.requireNonNull(BlockRegistry.get(blocks[x][y][z])).getColors()[0], textureAtlas.getSubTextureCoordinates(Objects.requireNonNull(BlockRegistry.get(blocks[x][y][z])).getTextures()[0]));
+                    }
 
                     if (shouldRenderFace(new Vector3i(x, y - 1, z)))
+                    {
+                        if (!voxelPositions.contains(new Vector3f(x + 0.5f, y + 0.5f, z + 0.5f)))
+                            voxelPositions.add(new Vector3f(x + 0.5f, y + 0.5f, z + 0.5f));
+
                         addFace(new Vector3i(x, y, z), new Vector3i(0, -1, 0), Objects.requireNonNull(BlockRegistry.get(blocks[x][y][z])).getColors()[1], textureAtlas.getSubTextureCoordinates(Objects.requireNonNull(BlockRegistry.get(blocks[x][y][z])).getTextures()[1]));
+                    }
 
                     if (shouldRenderFace(new Vector3i(x + 1, y, z)))
+                    {
+                        if (!voxelPositions.contains(new Vector3f(x + 0.5f, y + 0.5f, z + 0.5f)))
+                            voxelPositions.add(new Vector3f(x + 0.5f, y + 0.5f, z + 0.5f));
+
                         addFace(new Vector3i(x, y, z), new Vector3i(1, 0, 0), Objects.requireNonNull(BlockRegistry.get(blocks[x][y][z])).getColors()[4], textureAtlas.getSubTextureCoordinates(Objects.requireNonNull(BlockRegistry.get(blocks[x][y][z])).getTextures()[4], -90));
+                    }
 
                     if (shouldRenderFace(new Vector3i(x - 1, y, z)))
+                    {
+                        if (!voxelPositions.contains(new Vector3f(x + 0.5f, y + 0.5f, z + 0.5f)))
+                            voxelPositions.add(new Vector3f(x + 0.5f, y + 0.5f, z + 0.5f));
+
                         addFace(new Vector3i(x, y, z), new Vector3i(-1, 0, 0), Objects.requireNonNull(BlockRegistry.get(blocks[x][y][z])).getColors()[5], textureAtlas.getSubTextureCoordinates(Objects.requireNonNull(BlockRegistry.get(blocks[x][y][z])).getTextures()[5], 90));
+                    }
                 }
             }
         }
 
         Mesh mesh = getGameObject().getComponent(Mesh.class);
+        VoxelMeshCollider collider = getGameObject().getComponent(VoxelMeshCollider.class);
 
         if (mesh == null)
         {
@@ -80,7 +114,14 @@ public class Chunk extends Component
             return;
         }
 
+        if (collider == null)
+        {
+            System.err.println("VoxelMeshCollider component missing from GameObject: '" + getGameObject().getName() + "'!");
+            return;
+        }
+
         mesh.setTransient(true);
+        collider.setTransient(true);
 
         if (!vertices.isEmpty() && !indices.isEmpty())
         {
@@ -91,6 +132,8 @@ public class Chunk extends Component
             });
 
             mesh.onLoad();
+
+            collider.setVoxels(voxelPositions);
         }
     }
 

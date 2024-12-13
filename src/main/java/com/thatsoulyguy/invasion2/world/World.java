@@ -2,6 +2,7 @@ package com.thatsoulyguy.invasion2.world;
 
 import com.thatsoulyguy.invasion2.annotation.CustomConstructor;
 import com.thatsoulyguy.invasion2.annotation.EffectivelyNotNull;
+import com.thatsoulyguy.invasion2.collider.colliders.VoxelMeshCollider;
 import com.thatsoulyguy.invasion2.math.Transform;
 import com.thatsoulyguy.invasion2.render.Mesh;
 import com.thatsoulyguy.invasion2.render.ShaderManager;
@@ -69,6 +70,8 @@ public class World extends Component
 
         object.getTransform().setLocalPosition(CoordinateHelper.chunkToWorldCoordinates(chunkPosition));
 
+        object.addComponent(VoxelMeshCollider.create());
+
         object.addComponent(Objects.requireNonNull(ShaderManager.get("default")));
         object.addComponent(Objects.requireNonNull(TextureAtlasManager.get("blocks")));
 
@@ -96,6 +99,11 @@ public class World extends Component
         GameObjectManager.unregister("chunk_" + chunkPosition.x + "_" + chunkPosition.y + "_" + chunkPosition.z, true);
 
         loadedChunks.remove(chunkPosition);
+    }
+
+    public @NotNull List<Vector3i> getLoadedChunks()
+    {
+        return loadedChunks.stream().toList();
     }
 
     public void loadCloseChunks()

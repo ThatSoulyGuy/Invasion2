@@ -14,6 +14,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -26,7 +27,9 @@ public class GameObject implements Serializable
     private @Nullable transient GameObject parent;
     private final @NotNull ConcurrentMap<String, GameObject> children = new ConcurrentHashMap<>();
 
-    private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+    private final @NotNull AtomicBoolean isUpdating = new AtomicBoolean(false);
+
+    private final @NotNull ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
     private boolean isActive = true;
 
@@ -120,20 +123,70 @@ public class GameObject implements Serializable
 
     public void update()
     {
-        if (!isActive)
+        if (!isUpdating.compareAndSet(false, true))
             return;
-
-        lock.writeLock().lock();
 
         try
         {
-            componentMap.values().forEach(Component::update);
+            if (!isActive)
+                return;
 
-            children.values().forEach(GameObject::update);
+            lock.writeLock().lock();
+
+            try
+            {
+                componentMap.values().forEach(Component::update);
+
+                synchronized (children)
+                {
+                    children.values().forEach(GameObject::update);
+                }
+            }
+            finally
+            {
+                lock.writeLock().unlock();
+            }
+        }
+        catch (Exception exception)
+        {
+            System.err.println("Exception in game object: '" + name + "'! " + exception.getMessage());
         }
         finally
         {
-            lock.writeLock().unlock();
+            isUpdating.set(false);
+        }
+    }
+
+    public void updateSingleThread()
+    {
+        try
+        {
+            if (!isActive)
+                return;
+
+            lock.writeLock().lock();
+
+            try
+            {
+                componentMap.values().forEach(Component::updateSingleThread);
+
+                synchronized (children)
+                {
+                    children.values().forEach(GameObject::updateSingleThread);
+                }
+            }
+            finally
+            {
+                lock.writeLock().unlock();
+            }
+        }
+        catch (Exception exception)
+        {
+            System.err.println("Exception in game object: '" + name + "'! " + exception.getMessage());
+        }
+        finally
+        {
+            isUpdating.set(false);
         }
     }
 
@@ -368,7 +421,21 @@ public class GameObject implements Serializable
 
     public void uninitialize()
     {
-        lock.writeLock().lock();
+        while (!lock.writeLock().tryLock() || isUpdating.get())
+        {
+            try
+            {
+                Thread.sleep(10);
+            }
+            catch (InterruptedException e)
+            {
+                Thread.currentThread().interrupt();
+
+                System.err.println("Uninitialize was interrupted while waiting for locks.");
+
+                return;
+            }
+        }
 
         try
         {
