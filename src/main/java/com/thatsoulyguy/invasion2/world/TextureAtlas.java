@@ -6,6 +6,8 @@ import com.thatsoulyguy.invasion2.render.Texture;
 import com.thatsoulyguy.invasion2.system.Component;
 import com.thatsoulyguy.invasion2.util.AssetPath;
 import com.thatsoulyguy.invasion2.util.ManagerLinkedClass;
+import io.github.classgraph.ClassGraph;
+import io.github.classgraph.ScanResult;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector2f;
@@ -16,13 +18,19 @@ import org.lwjgl.system.MemoryStack;
 import java.io.File;
 import java.io.InputStream;
 import java.net.URL;
+import java.net.URLDecoder;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.IntBuffer;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Enumeration;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 
 @CustomConstructor("create")
 public class TextureAtlas extends Component implements ManagerLinkedClass
@@ -239,39 +247,14 @@ public class TextureAtlas extends Component implements ManagerLinkedClass
 
     private List<String> listImageFiles(String directoryPath)
     {
-        List<String> result = new ArrayList<>();
+        List<String> result;
 
-        try
+        try (ScanResult scanResult = new ClassGraph().acceptPaths(directoryPath).scan())
         {
-            URL dirURL = TextureAtlas.class.getResource(directoryPath);
-
-            if (dirURL == null)
-            {
-                System.err.println("Directory not found: " + directoryPath);
-                return result;
-            }
-
-            File dir = new File(dirURL.toURI());
-
-            File[] files = dir.listFiles((d, name) ->
-            {
-                String lower = name.toLowerCase();
-                return lower.endsWith(".png") || lower.endsWith(".jpg") || lower.endsWith(".jpeg");
-            });
-
-            if (files != null)
-            {
-                for (File f : files)
-                {
-                    String relPath = directoryPath + "/" + f.getName();
-                    result.add(relPath);
-                }
-            }
+            result = scanResult.getAllResources().getPaths();
         }
-        catch (Exception e)
-        {
-            e.printStackTrace();
-        }
+
+        result.replaceAll(path -> "/" + path);
 
         return result;
     }

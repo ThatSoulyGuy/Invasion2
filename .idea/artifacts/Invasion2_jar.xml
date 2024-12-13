@@ -71,6 +71,7 @@
       <element id="extracted-dir" path="$PROJECT_DIR$/library/lwjgl.jar" path-in-jar="/" />
       <element id="extracted-dir" path="$PROJECT_DIR$/library/lwjglx-debug-1.0.0.jar" path-in-jar="/" />
       <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/realityforge/org/jetbrains/annotations/org.jetbrains.annotations/1.7.0/org.jetbrains.annotations-1.7.0.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/io/github/classgraph/classgraph/4.8.179/classgraph-4.8.179.jar" path-in-jar="/" />
     </root>
   </artifact>
 </component>
