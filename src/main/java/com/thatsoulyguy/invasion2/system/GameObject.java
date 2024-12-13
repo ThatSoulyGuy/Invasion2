@@ -18,7 +18,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-@CustomConstructor("create")
 public class GameObject implements Serializable
 {
     private @EffectivelyNotNull String name;
@@ -38,9 +37,7 @@ public class GameObject implements Serializable
     public <T extends Component> void addComponent(@NotNull T component)
     {
         component.setGameObject(this);
-
         component.initialize();
-
         componentMap.putIfAbsent(component.getClass(), component);
     }
 
@@ -136,44 +133,6 @@ public class GameObject implements Serializable
             try
             {
                 componentMap.values().forEach(Component::update);
-
-                synchronized (children)
-                {
-                    children.values().forEach(GameObject::update);
-                }
-            }
-            finally
-            {
-                lock.writeLock().unlock();
-            }
-        }
-        catch (Exception exception)
-        {
-            System.err.println("Exception in game object: '" + name + "'! " + exception.getMessage());
-        }
-        finally
-        {
-            isUpdating.set(false);
-        }
-    }
-
-    public void updateSingleThread()
-    {
-        try
-        {
-            if (!isActive)
-                return;
-
-            lock.writeLock().lock();
-
-            try
-            {
-                componentMap.values().forEach(Component::updateSingleThread);
-
-                synchronized (children)
-                {
-                    children.values().forEach(GameObject::updateSingleThread);
-                }
             }
             finally
             {
@@ -200,11 +159,6 @@ public class GameObject implements Serializable
         try
         {
             componentMap.values().forEach((component) -> component.render(camera));
-
-            synchronized (children)
-            {
-                children.values().forEach((gameObject) -> gameObject.render(camera));
-            }
         }
         finally
         {
@@ -226,42 +180,42 @@ public class GameObject implements Serializable
 
             List<Future<?>> componentFutures = new ArrayList<>();
             componentMap.forEach(((aClass, component) ->
-                componentFutures.add(componentExecutor.submit(() ->
-                {
-                    try
+                    componentFutures.add(componentExecutor.submit(() ->
                     {
-                        System.out.println("Saving component '" + component.getClass().getSimpleName() + "' on game object '" + name + "'...");
-
-                        component.onUnload();
-
-                        if (component.getTransient())
+                        try
                         {
-                            Constructor<?> constructor = aClass.getDeclaredConstructor();
+                            System.out.println("Saving component '" + component.getClass().getSimpleName() + "' on game object '" + name + "'...");
 
-                            constructor.setAccessible(true);
+                            component.onUnload();
 
-                            Component newComponent = (Component) constructor.newInstance();
-
-                            newComponent.setTransient(true);
-
-                            synchronized (objectOutputStream)
+                            if (component.getTransient())
                             {
-                                objectOutputStream.writeObject(newComponent);
+                                Constructor<?> constructor = aClass.getDeclaredConstructor();
+
+                                constructor.setAccessible(true);
+
+                                Component newComponent = (Component) constructor.newInstance();
+
+                                newComponent.setTransient(true);
+
+                                synchronized (objectOutputStream)
+                                {
+                                    objectOutputStream.writeObject(newComponent);
+                                }
+                            }
+                            else
+                            {
+                                synchronized (objectOutputStream)
+                                {
+                                    objectOutputStream.writeObject(component);
+                                }
                             }
                         }
-                        else
+                        catch (NoSuchMethodException | IOException | InstantiationException | IllegalAccessException | InvocationTargetException e)
                         {
-                            synchronized (objectOutputStream)
-                            {
-                                objectOutputStream.writeObject(component);
-                            }
+                            throw new RuntimeException(e);
                         }
-                    }
-                    catch (NoSuchMethodException | IOException | InstantiationException | IllegalAccessException | InvocationTargetException e)
-                    {
-                        throw new RuntimeException(e);
-                    }
-                }))));
+                    }))));
 
             componentExecutor.shutdown();
 
@@ -389,8 +343,7 @@ public class GameObject implements Serializable
         return result;
     }
 
-    public void setActive(boolean active)
-    {
+    public void setActive(boolean active) {
         isActive = active;
     }
 
@@ -421,24 +374,16 @@ public class GameObject implements Serializable
 
     public void uninitialize()
     {
-        while (!lock.writeLock().tryLock() || isUpdating.get())
+        if (isUpdating.get())
         {
-            try
-            {
-                Thread.sleep(10);
-            }
-            catch (InterruptedException e)
-            {
-                Thread.currentThread().interrupt();
-
-                System.err.println("Uninitialize was interrupted while waiting for locks.");
-
-                return;
-            }
+            GameObjectManager.unregister(this.name, true);
+            return;
         }
 
         try
         {
+            lock.writeLock().lock();
+
             isActive = false;
 
             componentMap.values().stream()
@@ -452,6 +397,10 @@ public class GameObject implements Serializable
                 children.values().forEach(GameObject::uninitialize);
                 children.clear();
             }
+        }
+        catch (Exception exception)
+        {
+            System.err.println("Failed to uninitialize GameObject '" + name + "': " + exception.getMessage());
         }
         finally
         {

@@ -26,6 +26,7 @@ public class EntityPlayer extends Entity
         GameObject cameraObject = getGameObject().getChild("camera");
 
         cameraObject.addComponent(Camera.create(45.0f, 0.01f, 1000.0f));
+        cameraObject.getTransform().setLocalPosition(new Vector3f(0.0f, 0.86f, 0.0f));
 
         camera = cameraObject.getComponent(Camera.class);
 
@@ -57,7 +58,7 @@ public class EntityPlayer extends Entity
     @Override
     public float getWalkingSpeed()
     {
-        return 0.1f;
+        return 0.07f;
     }
 
     @Override
@@ -117,6 +118,9 @@ public class EntityPlayer extends Entity
 
         Vector3f forward = new Vector3f(camera.getGameObject().getTransform().getForward());
         Vector3f right = new Vector3f(camera.getGameObject().getTransform().getRight());
+
+        forward.y = 0;
+        right.y = 0;
 
         if (InputManager.getKeyState(KeyCode.W, KeyState.HELD))
             position.add(forward.mul(movementSpeed, new Vector3f()));

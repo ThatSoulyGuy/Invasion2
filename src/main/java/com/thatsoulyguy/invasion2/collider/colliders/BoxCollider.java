@@ -16,11 +16,6 @@ public class BoxCollider extends Collider
 
     private BoxCollider() { }
 
-    public void setSize(@NotNull Vector3f size)
-    {
-        this.size.set(size);
-    }
-
     public @NotNull Vector3f getSize()
     {
         return new Vector3f(size);
@@ -135,8 +130,12 @@ public class BoxCollider extends Collider
             getGameObject().getTransform().translate(movement);
     }
 
-    public static @NotNull BoxCollider create()
+    public static @NotNull BoxCollider create(@NotNull Vector3f size)
     {
-        return new BoxCollider();
+        BoxCollider result = new BoxCollider();
+
+        result.size = size;
+
+        return result;
     }
 }

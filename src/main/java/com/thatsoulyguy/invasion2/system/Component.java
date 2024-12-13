@@ -16,7 +16,6 @@ public abstract class Component implements Serializable
 
     public void initialize() { }
     public void update() { }
-    public void updateSingleThread() { }
     public void render(@Nullable Camera camera) { }
     public void uninitialize() { }
 

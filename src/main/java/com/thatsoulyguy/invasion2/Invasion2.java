@@ -67,16 +67,16 @@ public class Invasion2
 
     public void initialize()
     {
-        //LevelManager.loadLevel(FileHelper.getPersistentDataPath("Invasion2") + "/overworld");
+        LevelManager.loadLevel(FileHelper.getPersistentDataPath("Invasion2") + "/overworld");
 
-        ///*
+        /*
         LevelManager.createLevel("overworld", true);
 
         player = GameObject.create("player");
 
         player.getTransform().setLocalPosition(new Vector3f(0.0f, 180.0f, 0.0f));
 
-        player.addComponent(BoxCollider.create());
+        player.addComponent(BoxCollider.create(new Vector3f(0.65f, 1.89f, 0.65f)));
         player.addComponent(Rigidbody.create());
         player.addComponent(Entity.create(EntityPlayer.class));
 
@@ -91,7 +91,6 @@ public class Invasion2
         Objects.requireNonNull(Objects.requireNonNull(GameObjectManager.get("world")).getComponent(World.class)).chunkLoader = Objects.requireNonNull(GameObjectManager.get("player")).getTransform();
 
         GameObjectManager.update();
-        GameObjectManager.updateSingleThread();
 
         MainThreadExecutor.execute();
 
@@ -109,7 +108,7 @@ public class Invasion2
 
     public void uninitialize()
     {
-        LevelManager.saveLevel("overworld", FileHelper.getPersistentDataPath("Invasion2"));
+        //LevelManager.saveLevel("overworld", FileHelper.getPersistentDataPath("Invasion2"));
 
         GameObjectManager.uninitialize();
 

@@ -8,6 +8,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -16,7 +17,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class GameObjectManager
 {
     private static final @NotNull ConcurrentMap<String, GameObject> gameObjectMap = new ConcurrentHashMap<>();
-    private static final @NotNull ExecutorService executor = Executors.newCachedThreadPool();
+    private static final @NotNull ExecutorService executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
     private static final @NotNull BlockingQueue<GameObject> uninitializeQueue = new LinkedBlockingQueue<>();
     private static final @NotNull AtomicBoolean isUpdating = new AtomicBoolean(false);
 
@@ -62,9 +63,11 @@ public class GameObjectManager
     public static void update()
     {
         isUpdating.set(true);
+
+        List<GameObject> allGameObjects = collectAllGameObjects();
         List<Future<?>> updateTasks = new ArrayList<>();
 
-        for (GameObject gameObject : gameObjectMap.values())
+        for (GameObject gameObject : allGameObjects)
         {
             updateTasks.add(executor.submit(() ->
             {
@@ -77,7 +80,12 @@ public class GameObjectManager
         {
             try
             {
-                task.get();
+                task.get(10, TimeUnit.SECONDS);
+            }
+            catch (TimeoutException e)
+            {
+                System.err.println("Update task timed out and may be hanging.");
+                task.cancel(true);
             }
             catch (Exception e)
             {
@@ -90,16 +98,25 @@ public class GameObjectManager
         processUninitializeQueue();
     }
 
-    public static void updateSingleThread()
+    private static List<GameObject> collectAllGameObjects()
     {
-        isUpdating.set(true);
+        List<GameObject> list = new ArrayList<>();
+        Set<GameObject> visited = ConcurrentHashMap.newKeySet();
 
         for (GameObject gameObject : gameObjectMap.values())
-            gameObject.updateSingleThread();
+            traverse(gameObject, list, visited);
 
-        isUpdating.set(false);
+        return list;
+    }
 
-        processUninitializeQueue();
+    private static void traverse(GameObject gameObject, List<GameObject> list, Set<GameObject> visited)
+    {
+        if (gameObject == null || !visited.add(gameObject))
+            return;
+        list.add(gameObject);
+
+        for (GameObject child : gameObject.getChildren())
+            traverse(child, list, visited);
     }
 
     public static void render(@Nullable Camera camera)
@@ -130,15 +147,24 @@ public class GameObjectManager
 
         try
         {
-            executor.awaitTermination(1, TimeUnit.MINUTES);
+            if (!executor.awaitTermination(1, TimeUnit.MINUTES))
+            {
+                executor.shutdownNow();
+
+                if (!executor.awaitTermination(1, TimeUnit.MINUTES))
+                    System.err.println("Executor did not terminate.");
+            }
         }
         catch (InterruptedException e)
         {
+            executor.shutdownNow();
+
             Thread.currentThread().interrupt();
             System.err.println("GameObject update tasks were interrupted.");
         }
 
-        gameObjectMap.values().forEach(GameObject::uninitialize);
+        for (GameObject gameObject : gameObjectMap.values())
+            gameObject.uninitialize();
 
         gameObjectMap.clear();
     }

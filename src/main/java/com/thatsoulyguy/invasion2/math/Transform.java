@@ -123,11 +123,11 @@ public class Transform extends Component
 
         Matrix4f localMatrix = new Matrix4f()
                 .identity()
-                .scale(localScale)
+                .translate(localPosition)
                 .rotateY(ry)
                 .rotateX(rx)
                 .rotateZ(rz)
-                .translate(localPosition);
+                .scale(localScale);
 
         if (parent != null)
             return parent.getModelMatrix().mul(localMatrix, new Matrix4f());
