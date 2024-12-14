@@ -9,6 +9,7 @@ import com.thatsoulyguy.invasion2.render.ShaderManager;
 import com.thatsoulyguy.invasion2.system.Component;
 import com.thatsoulyguy.invasion2.system.GameObject;
 import com.thatsoulyguy.invasion2.system.GameObjectManager;
+import com.thatsoulyguy.invasion2.system.LevelManager;
 import com.thatsoulyguy.invasion2.util.CoordinateHelper;
 import com.thatsoulyguy.invasion2.util.SerializableObject;
 import org.jetbrains.annotations.NotNull;
@@ -104,6 +105,44 @@ public class World extends Component
     public @NotNull List<Vector3i> getLoadedChunks()
     {
         return loadedChunks.stream().toList();
+    }
+
+    public @NotNull String getName()
+    {
+        return name;
+    }
+
+    /**
+     * Sets a block in the world.
+     *
+     * @param worldPosition The block position at which a block is set.
+     * @param type The type of the block being set
+     */
+    public boolean setBlock(@NotNull Vector3f worldPosition, short type)
+    {
+        Vector3i blockCoordinates = CoordinateHelper.worldToBlockCoordinates(worldPosition);
+        Vector3i chunkCoordinates = CoordinateHelper.worldToChunkCoordinates(worldPosition);
+
+        if (!loadedChunks.contains(chunkCoordinates))
+            return false;
+        else
+        {
+            Objects.requireNonNull(getChunk(chunkCoordinates)).setBlock(blockCoordinates, type);
+            return true;
+        }
+    }
+
+    public @Nullable Chunk getChunk(@NotNull Vector3i chunkPosition)
+    {
+        if (!loadedChunks.contains(chunkPosition))
+            return null;
+
+        return Objects.requireNonNull(GameObjectManager.get("chunk_" + chunkPosition.x + "_" + chunkPosition.y + "_" + chunkPosition.z)).getComponent(Chunk.class);
+    }
+
+    public static @NotNull World getLocalWorld()
+    {
+        return Objects.requireNonNull(Objects.requireNonNull(GameObjectManager.get("world")).getComponent(World.class));
     }
 
     public void loadCloseChunks()

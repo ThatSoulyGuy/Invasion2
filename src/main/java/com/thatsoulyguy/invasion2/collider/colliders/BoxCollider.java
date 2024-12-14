@@ -33,12 +33,28 @@ public class BoxCollider extends Collider
     }
 
     @Override
-    public void resolve(@NotNull Collider other)
+    public @NotNull Vector3f resolve(@NotNull Collider other)
     {
+        Vector3f movement = new Vector3f();
+
         if (other instanceof BoxCollider box)
-            resolveWithBox(box);
+            movement = resolveWithBox(box);
         else if (other instanceof VoxelMeshCollider voxelMesh)
-            resolveWithVoxelMesh(voxelMesh);
+            movement = resolveWithVoxelMesh(voxelMesh);
+
+        return movement;
+    }
+
+    @Override
+    public @NotNull Optional<Vector3f> rayIntersect(@NotNull Vector3f origin, @NotNull Vector3f direction)
+    {
+        Vector3f worldPosition = getPosition();
+        Vector3f half = new Vector3f(this.size).mul(0.5f);
+
+        Vector3f min = worldPosition.sub(half, new Vector3f());
+        Vector3f max = worldPosition.add(half, new Vector3f());
+
+        return Collider.rayIntersectGeneric(min, max, origin, direction);
     }
 
     @Override
@@ -65,7 +81,7 @@ public class BoxCollider extends Collider
         return voxelMesh.intersects(this);
     }
 
-    private void resolveWithBox(@NotNull BoxCollider box)
+    private @NotNull Vector3f resolveWithBox(@NotNull BoxCollider box)
     {
         Vector3f aCenter = this.getPosition();
         Vector3f bCenter = box.getPosition();
@@ -80,7 +96,7 @@ public class BoxCollider extends Collider
         float overlapZ = (aHalf.z + bHalf.z) - Math.abs(delta.z);
 
         if (overlapX <= 0 || overlapY <= 0 || overlapZ <= 0)
-            return;
+            return new Vector3f();
 
         float minOverlap = Math.min(overlapX, Math.min(overlapY, overlapZ));
         Vector3f mtv = new Vector3f();
@@ -98,9 +114,11 @@ public class BoxCollider extends Collider
 
         if (minOverlap > EPSILON)
             getGameObject().getTransform().translate(mtv);
+
+        return mtv;
     }
 
-    private void resolveWithVoxelMesh(@NotNull VoxelMeshCollider voxelMesh)
+    private @NotNull Vector3f resolveWithVoxelMesh(@NotNull VoxelMeshCollider voxelMesh)
     {
         Vector3f selfWorldPosition = getPosition();
         Vector3f selfHalf = new Vector3f(this.size).mul(0.5f);
@@ -128,6 +146,8 @@ public class BoxCollider extends Collider
 
         if (movement.lengthSquared() > 0)
             getGameObject().getTransform().translate(movement);
+
+        return movement;
     }
 
     public static @NotNull BoxCollider create(@NotNull Vector3f size)

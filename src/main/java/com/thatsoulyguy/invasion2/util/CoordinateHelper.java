@@ -6,6 +6,11 @@ import org.jetbrains.annotations.NotNull;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
 
+/**
+ * A class for coordinate conversions
+ * <p>
+ * Annotates: {@code @Static}
+ */
 @Static
 public class CoordinateHelper
 {
@@ -57,6 +62,10 @@ public class CoordinateHelper
         int y = (int) Math.floor(worldCoordinates.y);
         int z = (int) Math.floor(worldCoordinates.z);
 
+        x = mod(x, Chunk.SIZE);
+        y = mod(y, Chunk.SIZE);
+        z = mod(z, Chunk.SIZE);
+
         return new Vector3i(x, y, z);
     }
 
@@ -79,5 +88,15 @@ public class CoordinateHelper
         float z = (chunkCoordinates.z * (float) Chunk.SIZE) + blockCoordinates.z;
 
         return new Vector3f(x, y, z);
+    }
+
+    private static int mod(int a, int n)
+    {
+        int result = a % n;
+
+        if (result < 0)
+            result += n;
+
+        return result;
     }
 }

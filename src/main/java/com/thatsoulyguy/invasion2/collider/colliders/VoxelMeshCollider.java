@@ -8,6 +8,7 @@ import org.joml.Vector3f;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 @CustomConstructor("create")
 public class VoxelMeshCollider extends Collider
@@ -39,12 +40,34 @@ public class VoxelMeshCollider extends Collider
     }
 
     @Override
-    public void resolve(@NotNull Collider other)
+    public @NotNull Vector3f resolve(@NotNull Collider other)
     {
         if (other instanceof BoxCollider box)
             resolveWithBox(box);
         else if (other instanceof VoxelMeshCollider voxelMesh)
             resolveWithVoxelMesh(voxelMesh);
+
+        return new Vector3f();
+    }
+
+    @Override
+    public @NotNull Optional<Vector3f> rayIntersect(@NotNull Vector3f origin, @NotNull Vector3f direction)
+    {
+        for (Vector3f voxel : voxels)
+        {
+            Vector3f voxelWorldPosition = new Vector3f(getPosition()).add(voxel);
+            Vector3f voxelHalf = new Vector3f(0.5f, 0.5f, 0.5f);
+
+            Vector3f voxelMin = voxelWorldPosition.sub(voxelHalf, new Vector3f());
+            Vector3f voxelMax = voxelWorldPosition.add(voxelHalf, new Vector3f());
+
+            Optional<Vector3f> result = Collider.rayIntersectGeneric(voxelMin, voxelMax, origin, direction);
+
+            if (result.isPresent())
+                return result;
+        }
+
+        return Optional.empty();
     }
 
     @Override
@@ -53,9 +76,6 @@ public class VoxelMeshCollider extends Collider
         return getGameObject().getTransform().getWorldPosition();
     }
 
-    /**
-     * Checks intersection with a BoxCollider.
-     */
     private boolean intersectsBox(@NotNull BoxCollider box)
     {
         Vector3f boxCenter = box.getPosition();
@@ -79,9 +99,6 @@ public class VoxelMeshCollider extends Collider
         return false;
     }
 
-    /**
-     * Checks intersection with another VoxelMeshCollider.
-     */
     private boolean intersectsVoxelMesh(@NotNull VoxelMeshCollider other)
     {
         Vector3f thisCenter = this.getPosition();
@@ -101,9 +118,6 @@ public class VoxelMeshCollider extends Collider
         return false;
     }
 
-    /**
-     * Resolves collision with a BoxCollider by adjusting this VoxelMeshCollider's position.
-     */
     private void resolveWithBox(@NotNull BoxCollider box)
     {
         Vector3f boxCenter = box.getPosition();
@@ -162,9 +176,6 @@ public class VoxelMeshCollider extends Collider
             getGameObject().getTransform().translate(mtv);
     }
 
-    /**
-     * Resolves collision with another VoxelMeshCollider by adjusting this VoxelMeshCollider's position.
-     */
     private void resolveWithVoxelMesh(@NotNull VoxelMeshCollider other)
     {
         Vector3f thisCenter = this.getPosition();
@@ -224,7 +235,8 @@ public class VoxelMeshCollider extends Collider
             getGameObject().getTransform().translate(mtv);
     }
 
-    public static @NotNull VoxelMeshCollider create() {
+    public static @NotNull VoxelMeshCollider create()
+    {
         return new VoxelMeshCollider();
     }
 }

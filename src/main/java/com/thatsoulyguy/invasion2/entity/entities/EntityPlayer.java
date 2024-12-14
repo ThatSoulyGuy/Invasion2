@@ -1,25 +1,40 @@
 package com.thatsoulyguy.invasion2.entity.entities;
 
+import com.thatsoulyguy.invasion2.block.BlockRegistry;
+import com.thatsoulyguy.invasion2.collider.Collider;
+import com.thatsoulyguy.invasion2.collider.colliders.BoxCollider;
+import com.thatsoulyguy.invasion2.collider.colliders.VoxelMeshCollider;
 import com.thatsoulyguy.invasion2.entity.Entity;
-import com.thatsoulyguy.invasion2.input.InputManager;
-import com.thatsoulyguy.invasion2.input.KeyCode;
-import com.thatsoulyguy.invasion2.input.KeyState;
-import com.thatsoulyguy.invasion2.input.MouseMode;
+import com.thatsoulyguy.invasion2.input.*;
+import com.thatsoulyguy.invasion2.math.Raycast;
+import com.thatsoulyguy.invasion2.math.RaycastHit;
+import com.thatsoulyguy.invasion2.math.Rigidbody;
 import com.thatsoulyguy.invasion2.render.Camera;
 import com.thatsoulyguy.invasion2.system.GameObject;
-import com.thatsoulyguy.invasion2.util.SerializableObject;
+import com.thatsoulyguy.invasion2.world.World;
 import org.jetbrains.annotations.NotNull;
 import org.joml.Vector2f;
 import org.joml.Vector3f;
+
+import java.util.Optional;
 
 public class EntityPlayer extends Entity
 {
     private Camera camera;
 
+    private final float blockBreakCooldownTimerStart = 0.083f;
+    private float blockBreakCooldownTimer;
+
+    private final float jumpCooldownTimerStart = 0.18f;
+    private float jumpCooldownTimer;
+
     @Override
     public void initialize()
     {
         super.initialize();
+
+        jumpCooldownTimer = jumpCooldownTimerStart;
+        blockBreakCooldownTimer = blockBreakCooldownTimerStart;
 
         getGameObject().addChild(GameObject.create("camera"));
 
@@ -41,6 +56,9 @@ public class EntityPlayer extends Entity
         updateControls();
         updateMouselook();
         updateMovement();
+
+        jumpCooldownTimer -= 0.01f;
+        blockBreakCooldownTimer -= 0.01f;
     }
 
     @Override
@@ -87,6 +105,26 @@ public class EntityPlayer extends Entity
             else
                 InputManager.setMouseMode(MouseMode.LOCKED);
         }
+
+        if (InputManager.getMouseState(MouseCode.MOUSE_LEFT, MouseState.HELD) && blockBreakCooldownTimer <= 0)
+        {
+            Optional<RaycastHit> hit = Raycast.cast(camera.getGameObject().getTransform().getWorldPosition(), camera.getGameObject().getTransform().getForward(), 10, getGameObject().getComponent(BoxCollider.class));
+
+            if (hit.isPresent())
+            {
+                Vector3f point = hit.get().getPosition();
+                Vector3f direction = camera.getGameObject().getTransform().getForward();
+                Collider collider = hit.get().getCollider();
+
+                point.add(direction.mul(0.5f, new Vector3f()));
+
+                if (collider instanceof VoxelMeshCollider)
+                {
+                    World.getLocalWorld().setBlock(point, BlockRegistry.BLOCK_AIR.getID());
+                    blockBreakCooldownTimer = blockBreakCooldownTimerStart;
+                }
+            }
+        }
     }
 
     private void updateMouselook()
@@ -112,6 +150,14 @@ public class EntityPlayer extends Entity
 
     private void updateMovement()
     {
+        Rigidbody rigidbody = getGameObject().getComponent(Rigidbody.class);
+
+        if (rigidbody == null)
+        {
+            System.err.println("No RigidBody component found on game object: '" + getGameObject().getName() + "'!");
+            return;
+        }
+
         float movementSpeed = getWalkingSpeed();
 
         Vector3f position = new Vector3f(getGameObject().getTransform().getLocalPosition());
@@ -133,6 +179,12 @@ public class EntityPlayer extends Entity
 
         if (InputManager.getKeyState(KeyCode.D, KeyState.HELD))
             position.add(right.mul(movementSpeed, new Vector3f()));
+
+        if (InputManager.getKeyState(KeyCode.SPACE, KeyState.HELD) && rigidbody.isGrounded() && jumpCooldownTimer <= 0)
+        {
+            rigidbody.addForce(new Vector3f(0.0f, 5.6f, 0.0f));
+            jumpCooldownTimer = jumpCooldownTimerStart;
+        }
 
         getGameObject().getTransform().setLocalPosition(position);
     }

@@ -137,6 +137,19 @@ public class Chunk extends Component
         }
     }
 
+    public void setBlock(@NotNull Vector3i blockPosition, short type)
+    {
+        if (blockPosition.x < 0 || blockPosition.x >= SIZE || blockPosition.y < 0 || blockPosition.y >= SIZE || blockPosition.z < 0 || blockPosition.z >= SIZE)
+            return;
+
+        if (blocks[blockPosition.x][blockPosition.y][blockPosition.z] == type)
+            return;
+
+        blocks[blockPosition.x][blockPosition.y][blockPosition.z] = type;
+
+        onLoad();
+    }
+
     private boolean shouldRenderFace(@NotNull Vector3i position)
     {
         if (position.x < 0 || position.x >= SIZE || position.y < 0 || position.y >= SIZE || position.z < 0 || position.z >= SIZE)

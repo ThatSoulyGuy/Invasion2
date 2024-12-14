@@ -20,8 +20,11 @@ public abstract class Collider extends Component
      * Resolves collisions by adjusting the position of this collider to prevent overlap.
      *
      * @param other The other collider to resolve against.
+     * @return The penetration vector
      */
-    public abstract void resolve(@NotNull Collider other);
+    public abstract @NotNull Vector3f resolve(@NotNull Collider other);
+
+    public abstract @NotNull Optional<Vector3f> rayIntersect(@NotNull Vector3f origin, @NotNull Vector3f direction);
 
     public abstract @NotNull Vector3f getPosition();
 
@@ -61,6 +64,29 @@ public abstract class Collider extends Component
         }
 
         return Optional.of(mtv);
+    }
+
+    public static @NotNull Optional<Vector3f> rayIntersectGeneric(@NotNull Vector3f min, @NotNull Vector3f max, @NotNull Vector3f origin, @NotNull Vector3f direction)
+    {
+        Vector3f invDir = new Vector3f(1.0f / direction.x, 1.0f / direction.y, 1.0f / direction.z);
+
+        float t1 = (min.x - origin.x) * invDir.x;
+        float t2 = (max.x - origin.x) * invDir.x;
+        float t3 = (min.y - origin.y) * invDir.y;
+        float t4 = (max.y - origin.y) * invDir.y;
+        float t5 = (min.z - origin.z) * invDir.z;
+        float t6 = (max.z - origin.z) * invDir.z;
+
+        float tMin = Math.max(Math.max(Math.min(t1, t2), Math.min(t3, t4)), Math.min(t5, t6));
+        float tMax = Math.min(Math.min(Math.max(t1, t2), Math.max(t3, t4)), Math.max(t5, t6));
+
+        if (tMax < 0 || tMin > tMax)
+            return Optional.empty();
+
+        float t = tMin > 0 ? tMin : tMax;
+
+        Vector3f hitPoint = new Vector3f(origin).add(new Vector3f(direction).mul(t));
+        return Optional.of(hitPoint);
     }
 
     @Override
