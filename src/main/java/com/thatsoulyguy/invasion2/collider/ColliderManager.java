@@ -29,12 +29,12 @@ public class ColliderManager
         colliderMap.remove(object);
     }
 
-    public static @Nullable Collider get(@NotNull Vector3f position)
+    public static @Nullable Collider get(@NotNull GameObject object)
     {
-        return colliderMap.getOrDefault(position, null);
+        return colliderMap.getOrDefault(object, null);
     }
 
-    public static @NotNull List<Collider> getAll()
+    public static synchronized @NotNull List<Collider> getAll()
     {
         return List.copyOf(colliderMap.values());
     }

@@ -105,7 +105,7 @@ public class LevelManager
         System.out.println("Level '" + name + "' saved!");
     }
 
-    public static void loadLevel(@NotNull String path)
+    public static void loadLevel(@NotNull String path, boolean setCurrent)
     {
         File saveDirectory = new File(path);
 
@@ -144,6 +144,9 @@ public class LevelManager
             objectInputStream.close();
 
             levels.putIfAbsent(level.getName(), level);
+
+            if (setCurrent)
+                currentLevel = level;
         }
         catch (Exception exception)
         {

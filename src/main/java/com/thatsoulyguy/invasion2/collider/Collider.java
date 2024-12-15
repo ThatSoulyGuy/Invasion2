@@ -2,9 +2,8 @@ package com.thatsoulyguy.invasion2.collider;
 
 import com.thatsoulyguy.invasion2.system.Component;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
-
-import java.util.Optional;
 
 public abstract class Collider extends Component
 {
@@ -14,61 +13,75 @@ public abstract class Collider extends Component
         ColliderManager.register(this);
     }
 
+    @Override
+    public void uninitialize()
+    {
+        ColliderManager.unregister(getGameObject());
+    }
+
     public abstract boolean intersects(@NotNull Collider other);
 
-    /**
-     * Resolves collisions by adjusting the position of this collider to prevent overlap.
-     *
-     * @param other The other collider to resolve against.
-     * @return The penetration vector
-     */
     public abstract @NotNull Vector3f resolve(@NotNull Collider other);
 
-    public abstract @NotNull Optional<Vector3f> rayIntersect(@NotNull Vector3f origin, @NotNull Vector3f direction);
+    public abstract @Nullable Float sweepTest(@NotNull Collider other, @NotNull Vector3f displacement);
+
+    public abstract @Nullable Vector3f rayIntersect(@NotNull Vector3f origin, @NotNull Vector3f direction);
 
     public abstract @NotNull Vector3f getPosition();
 
-    public static Optional<Vector3f> resolveGeneric(Vector3f minA, Vector3f maxA, Vector3f minB, Vector3f maxB)
+    public static boolean aabbIntersect(@NotNull Vector3f minA, @NotNull Vector3f maxA, @NotNull Vector3f minB, @NotNull Vector3f maxB)
+    {
+        return !(maxA.x < minB.x || minA.x > maxB.x ||
+                maxA.y < minB.y || minA.y > maxB.y ||
+                maxA.z < minB.z || minA.z > maxB.z);
+    }
+
+    public static @Nullable Vector3f resolveGeneric(Vector3f minA, Vector3f maxA, Vector3f minB, Vector3f maxB)
     {
         float overlapX = Math.min(maxA.x - minB.x, maxB.x - minA.x);
         float overlapY = Math.min(maxA.y - minB.y, maxB.y - minA.y);
         float overlapZ = Math.min(maxA.z - minB.z, maxB.z - minA.z);
 
         if (overlapX <= 0 || overlapY <= 0 || overlapZ <= 0)
-            return Optional.empty();
+            return null;
 
         float minOverlap = Math.min(overlapX, Math.min(overlapY, overlapZ));
-
-        Vector3f mtv = new Vector3f(0, 0, 0);
+        Vector3f mtv = new Vector3f();
 
         if (minOverlap == overlapX)
         {
-            float centerA = (minA.x + maxA.x) / 2.0f;
-            float centerB = (minB.x + maxB.x) / 2.0f;
+            float centerA = (minA.x + maxA.x)*0.5f;
+            float centerB = (minB.x + maxB.x)*0.5f;
 
             mtv.x = centerA < centerB ? -overlapX : overlapX;
         }
         else if (minOverlap == overlapY)
         {
-            float centerA = (minA.y + maxA.y) / 2.0f;
-            float centerB = (minB.y + maxB.y) / 2.0f;
+            float centerA = (minA.y + maxA.y)*0.5f;
+            float centerB = (minB.y + maxB.y)*0.5f;
 
             mtv.y = centerA < centerB ? -overlapY : overlapY;
         }
         else
         {
-            float centerA = (minA.z + maxA.z) / 2.0f;
-            float centerB = (minB.z + maxB.z) / 2.0f;
+            float centerA = (minA.z + maxA.z)*0.5f;
+            float centerB = (minB.z + maxB.z)*0.5f;
 
             mtv.z = centerA < centerB ? -overlapZ : overlapZ;
         }
 
-        return Optional.of(mtv);
+        return mtv;
     }
 
-    public static @NotNull Optional<Vector3f> rayIntersectGeneric(@NotNull Vector3f min, @NotNull Vector3f max, @NotNull Vector3f origin, @NotNull Vector3f direction)
+    public static @Nullable Vector3f rayIntersectGeneric(@NotNull Vector3f min, @NotNull Vector3f max, @NotNull Vector3f origin, @NotNull Vector3f direction)
     {
-        Vector3f invDir = new Vector3f(1.0f / direction.x, 1.0f / direction.y, 1.0f / direction.z);
+        final float EPSILON = 1e-8f;
+
+        Vector3f invDir = new Vector3f(
+                Math.abs(direction.x) > EPSILON ? 1.0f / direction.x : Float.POSITIVE_INFINITY,
+                Math.abs(direction.y) > EPSILON ? 1.0f / direction.y : Float.POSITIVE_INFINITY,
+                Math.abs(direction.z) > EPSILON ? 1.0f / direction.z : Float.POSITIVE_INFINITY
+        );
 
         float t1 = (min.x - origin.x) * invDir.x;
         float t2 = (max.x - origin.x) * invDir.x;
@@ -81,17 +94,13 @@ public abstract class Collider extends Component
         float tMax = Math.min(Math.min(Math.max(t1, t2), Math.max(t3, t4)), Math.max(t5, t6));
 
         if (tMax < 0 || tMin > tMax)
-            return Optional.empty();
+            return null;
 
-        float t = tMin > 0 ? tMin : tMax;
+        float t = tMin > EPSILON ? tMin : tMax;
 
-        Vector3f hitPoint = new Vector3f(origin).add(new Vector3f(direction).mul(t));
-        return Optional.of(hitPoint);
-    }
+        if (t < EPSILON)
+            return null;
 
-    @Override
-    public void uninitialize()
-    {
-        ColliderManager.unregister(getGameObject());
+        return new Vector3f(origin).add(new Vector3f(direction).mul(t));
     }
 }

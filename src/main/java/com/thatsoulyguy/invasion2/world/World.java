@@ -18,10 +18,7 @@ import org.joml.Vector3f;
 import org.joml.Vector3i;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 @CustomConstructor("create")
 public class World extends Component
@@ -38,6 +35,8 @@ public class World extends Component
     private final @NotNull Set<Vector3i> loadedChunks = ConcurrentHashMap.newKeySet();
 
     private final @NotNull Set<Vector3i> generatingChunks = ConcurrentHashMap.newKeySet();
+
+    private final ConcurrentMap<Vector3i, Future<?>> ongoingChunkGenerations = new ConcurrentHashMap<>();
 
     private final @NotNull TerrainGenerator terrainGenerator = TerrainGenerator.create(
             0.006,
@@ -151,39 +150,50 @@ public class World extends Component
             return;
 
         Vector3f playerWorldPosition = chunkLoader.getWorldPosition();
-
         Vector3i playerChunkPosition = CoordinateHelper.worldToChunkCoordinates(playerWorldPosition);
+
+        List<Vector3i> chunkPositions = new ArrayList<>();
 
         for (int cx = playerChunkPosition.x - RENDER_DISTANCE; cx <= playerChunkPosition.x + RENDER_DISTANCE; cx++)
         {
             for (int cz = playerChunkPosition.z - RENDER_DISTANCE; cz <= playerChunkPosition.z + RENDER_DISTANCE; cz++)
             {
                 for (int cy = 0; cy < VERTICAL_CHUNKS; cy++)
-                {
-                    Vector3i currentChunk = new Vector3i(cx, cy, cz);
-
-                    if (loadedChunks.contains(currentChunk) || !generatingChunks.add(currentChunk))
-                        continue;
-
-                    chunkGenerationExecutor.submit(() ->
-                    {
-                        try
-                        {
-                            Chunk chunk = generateChunk(currentChunk);
-                            loadedChunks.add(currentChunk);
-                        }
-                        catch (Exception e)
-                        {
-                            System.err.println("Error generating chunk " + currentChunk + ": " + e.getMessage());
-                            e.printStackTrace();
-                        }
-                        finally
-                        {
-                            generatingChunks.remove(currentChunk);
-                        }
-                    });
-                }
+                    chunkPositions.add(new Vector3i(cx, cy, cz));
             }
+        }
+
+        chunkPositions.sort(Comparator.comparingInt(pos -> Math.toIntExact(playerChunkPosition.distanceSquared(pos))));
+
+        for (Vector3i currentChunk : chunkPositions)
+        {
+            if (loadedChunks.contains(currentChunk) || ongoingChunkGenerations.containsKey(currentChunk))
+                continue;
+
+            Future<?> future = chunkGenerationExecutor.submit(() ->
+            {
+                try
+                {
+                    generateChunk(currentChunk);
+
+                    synchronized (chunkLock)
+                    {
+                        if (!loadedChunks.add(currentChunk))
+                            System.err.println("Chunk already loaded: " + currentChunk);
+                    }
+                }
+                catch (Exception e)
+                {
+                    System.err.println("Error generating chunk " + currentChunk + ": " + e.getMessage());
+                    e.printStackTrace();
+                }
+                finally
+                {
+                    ongoingChunkGenerations.remove(currentChunk);
+                }
+            });
+
+            ongoingChunkGenerations.put(currentChunk, future);
         }
     }
 

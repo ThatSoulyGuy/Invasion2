@@ -3,6 +3,7 @@ package com.thatsoulyguy.invasion2;
 import com.thatsoulyguy.invasion2.annotation.EffectivelyNotNull;
 import com.thatsoulyguy.invasion2.block.BlockRegistry;
 import com.thatsoulyguy.invasion2.collider.colliders.BoxCollider;
+import com.thatsoulyguy.invasion2.core.Time;
 import com.thatsoulyguy.invasion2.core.Window;
 import com.thatsoulyguy.invasion2.entity.Entity;
 import com.thatsoulyguy.invasion2.entity.entities.EntityPlayer;
@@ -54,7 +55,7 @@ public class Invasion2
 
         MainThreadExecutor.initialize();
 
-        Window.initialize("Invasion 2* (1.24.5)", windowSize);
+        Window.initialize("Invasion 2* (1.29.7)", windowSize);
 
         ShaderManager.register(Shader.create("default", AssetPath.create("invasion2", "shader/default")));
         TextureManager.register(Texture.create("debug", Texture.Filter.NEAREST, Texture.Wrapping.REPEAT, AssetPath.create("invasion2", "texture/debug.png")));
@@ -63,11 +64,13 @@ public class Invasion2
         BlockRegistry.initialize();
 
         InputManager.update();
+
+        Time.reset();
     }
 
     public void initialize()
     {
-        //LevelManager.loadLevel(FileHelper.getPersistentDataPath("Invasion2") + "/overworld");
+        //LevelManager.loadLevel(FileHelper.getPersistentDataPath("Invasion2") + "/overworld", true);
 
         ///*
         LevelManager.createLevel("overworld", true);
@@ -88,6 +91,8 @@ public class Invasion2
 
     public void update()
     {
+        Time.update();
+
         World.getLocalWorld().chunkLoader = Objects.requireNonNull(GameObjectManager.get("player")).getTransform();
 
         GameObjectManager.update();

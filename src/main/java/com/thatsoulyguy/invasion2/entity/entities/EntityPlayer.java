@@ -4,6 +4,7 @@ import com.thatsoulyguy.invasion2.block.BlockRegistry;
 import com.thatsoulyguy.invasion2.collider.Collider;
 import com.thatsoulyguy.invasion2.collider.colliders.BoxCollider;
 import com.thatsoulyguy.invasion2.collider.colliders.VoxelMeshCollider;
+import com.thatsoulyguy.invasion2.core.Time;
 import com.thatsoulyguy.invasion2.entity.Entity;
 import com.thatsoulyguy.invasion2.input.*;
 import com.thatsoulyguy.invasion2.math.Raycast;
@@ -57,8 +58,8 @@ public class EntityPlayer extends Entity
         updateMouselook();
         updateMovement();
 
-        jumpCooldownTimer -= 0.01f;
-        blockBreakCooldownTimer -= 0.01f;
+        jumpCooldownTimer -= Time.getDeltaTime();
+        blockBreakCooldownTimer -= Time.getDeltaTime();
     }
 
     @Override
@@ -76,7 +77,7 @@ public class EntityPlayer extends Entity
     @Override
     public float getWalkingSpeed()
     {
-        return 0.07f;
+        return 7.0f;
     }
 
     @Override
@@ -106,24 +107,46 @@ public class EntityPlayer extends Entity
                 InputManager.setMouseMode(MouseMode.LOCKED);
         }
 
-        if (InputManager.getMouseState(MouseCode.MOUSE_LEFT, MouseState.HELD) && blockBreakCooldownTimer <= 0)
+        if (InputManager.getMouseState(MouseCode.MOUSE_LEFT, MouseState.PRESSED))
         {
-            Optional<RaycastHit> hit = Raycast.cast(camera.getGameObject().getTransform().getWorldPosition(), camera.getGameObject().getTransform().getForward(), 10, getGameObject().getComponent(BoxCollider.class));
-
-            if (hit.isPresent())
+            Raycast.castAsync(camera.getGameObject().getTransform().getWorldPosition(), camera.getGameObject().getTransform().getForward(), 10, getGameObject().getComponent(BoxCollider.class)).thenAccept(hit ->
             {
-                Vector3f point = hit.get().getPosition();
-                Vector3f direction = camera.getGameObject().getTransform().getForward();
-                Collider collider = hit.get().getCollider();
-
-                point.add(direction.mul(0.5f, new Vector3f()));
-
-                if (collider instanceof VoxelMeshCollider)
+                if (hit != null)
                 {
-                    World.getLocalWorld().setBlock(point, BlockRegistry.BLOCK_AIR.getID());
-                    blockBreakCooldownTimer = blockBreakCooldownTimerStart;
+                    Vector3f point = hit.getPosition();
+                    Vector3f direction = camera.getGameObject().getTransform().getForward();
+                    Collider collider = hit.getCollider();
+
+                    point.add(direction.mul(0.5f, new Vector3f()));
+
+                    if (collider instanceof VoxelMeshCollider)
+                    {
+                        World.getLocalWorld().setBlock(point, BlockRegistry.BLOCK_AIR.getID());
+                        blockBreakCooldownTimer = blockBreakCooldownTimerStart;
+                    }
                 }
-            }
+            });
+        }
+
+        if (InputManager.getMouseState(MouseCode.MOUSE_RIGHT, MouseState.PRESSED))
+        {
+            Raycast.castAsync(camera.getGameObject().getTransform().getWorldPosition(), camera.getGameObject().getTransform().getForward(), 10, getGameObject().getComponent(BoxCollider.class)).thenAccept(hit ->
+            {
+                if (hit != null)
+                {
+                    Vector3f point = hit.getPosition();
+                    Vector3f direction = camera.getGameObject().getTransform().getForward();
+                    Collider collider = hit.getCollider();
+
+                    point.sub(direction.mul(0.5f, new Vector3f()));
+
+                    if (collider instanceof VoxelMeshCollider)
+                    {
+                        World.getLocalWorld().setBlock(point, BlockRegistry.BLOCK_DIRT.getID());
+                        blockBreakCooldownTimer = blockBreakCooldownTimerStart;
+                    }
+                }
+            });
         }
     }
 
@@ -154,11 +177,14 @@ public class EntityPlayer extends Entity
 
         if (rigidbody == null)
         {
-            System.err.println("No RigidBody component found on game object: '" + getGameObject().getName() + "'!");
+            System.err.println("No Rigidbody component found on game object: '" + getGameObject().getName() + "'!");
             return;
         }
 
-        float movementSpeed = getWalkingSpeed();
+        float movementSpeed = getWalkingSpeed() * Time.getDeltaTime();
+
+        if (!rigidbody.isGrounded())
+            movementSpeed *= 0.45f;
 
         Vector3f position = new Vector3f(getGameObject().getTransform().getLocalPosition());
 
@@ -167,6 +193,9 @@ public class EntityPlayer extends Entity
 
         forward.y = 0;
         right.y = 0;
+
+        forward.normalize();
+        right.normalize();
 
         if (InputManager.getKeyState(KeyCode.W, KeyState.HELD))
             position.add(forward.mul(movementSpeed, new Vector3f()));
@@ -182,7 +211,7 @@ public class EntityPlayer extends Entity
 
         if (InputManager.getKeyState(KeyCode.SPACE, KeyState.HELD) && rigidbody.isGrounded() && jumpCooldownTimer <= 0)
         {
-            rigidbody.addForce(new Vector3f(0.0f, 5.6f, 0.0f));
+            rigidbody.addForce(new Vector3f(0.0f, 1550.0f, 0.0f));
             jumpCooldownTimer = jumpCooldownTimerStart;
         }
 
