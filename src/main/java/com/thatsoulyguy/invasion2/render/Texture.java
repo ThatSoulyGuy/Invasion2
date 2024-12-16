@@ -86,13 +86,16 @@ public class Texture extends Component implements ManagerLinkedClass
 
             GL41.glTexImage2D(GL41.GL_TEXTURE_2D, 0, GL41.GL_RGBA, dimensions.x, dimensions.y, 0, GL41.GL_RGBA, GL41.GL_UNSIGNED_BYTE, image);
 
+            GL41.glGenerateMipmap(GL41.GL_TEXTURE_2D);
+
             GL41.glTexParameteri(GL41.GL_TEXTURE_2D, GL41.GL_TEXTURE_WRAP_S, wrapping.getValue());
             GL41.glTexParameteri(GL41.GL_TEXTURE_2D, GL41.GL_TEXTURE_WRAP_T, wrapping.getValue());
-            GL41.glTexParameteri(GL41.GL_TEXTURE_2D, GL41.GL_TEXTURE_MIN_FILTER, filter.getValue());
+            GL41.glTexParameteri(GL41.GL_TEXTURE_2D, GL41.GL_TEXTURE_MIN_FILTER, GL41.GL_NEAREST_MIPMAP_NEAREST);
             GL41.glTexParameteri(GL41.GL_TEXTURE_2D, GL41.GL_TEXTURE_MAG_FILTER, filter.getValue());
-            GL41.glTexParameteri(GL41.GL_TEXTURE_2D, GL41.GL_GENERATE_MIPMAP, GL41.GL_TRUE);
 
-            GL41.glGenerateMipmap(textureId);
+            GL41.glTexParameteri(GL41.GL_TEXTURE_2D, GL41.GL_TEXTURE_BASE_LEVEL, 0);
+            GL41.glTexParameteri(GL41.GL_TEXTURE_2D, GL41.GL_TEXTURE_MAX_LEVEL, (int) Math.floor(Math.log(Math.max(dimensions.x, dimensions.y)) / Math.log(2)));
+            GL41.glTexParameterf(GL41.GL_TEXTURE_2D, GL41.GL_TEXTURE_LOD_BIAS, 0.0f);
 
             GL41.glBindTexture(GL41.GL_TEXTURE_2D, 0);
 
@@ -173,10 +176,18 @@ public class Texture extends Component implements ManagerLinkedClass
         GL41.glBindTexture(GL41.GL_TEXTURE_2D, textureId);
 
         GL41.glTexImage2D(GL41.GL_TEXTURE_2D, 0, GL41.GL_RGBA, width, height, 0, GL41.GL_RGBA, GL41.GL_UNSIGNED_BYTE, pixelData);
+
+        GL41.glGenerateMipmap(GL41.GL_TEXTURE_2D);
+
         GL41.glTexParameteri(GL41.GL_TEXTURE_2D, GL41.GL_TEXTURE_WRAP_S, wrapping.getValue());
         GL41.glTexParameteri(GL41.GL_TEXTURE_2D, GL41.GL_TEXTURE_WRAP_T, wrapping.getValue());
-        GL41.glTexParameteri(GL41.GL_TEXTURE_2D, GL41.GL_TEXTURE_MIN_FILTER, filter.getValue());
+
+        GL41.glTexParameteri(GL41.GL_TEXTURE_2D, GL41.GL_TEXTURE_MIN_FILTER, GL41.GL_NEAREST_MIPMAP_NEAREST);
         GL41.glTexParameteri(GL41.GL_TEXTURE_2D, GL41.GL_TEXTURE_MAG_FILTER, filter.getValue());
+
+        GL41.glTexParameteri(GL41.GL_TEXTURE_2D, GL41.GL_TEXTURE_BASE_LEVEL, 0);
+        GL41.glTexParameteri(GL41.GL_TEXTURE_2D, GL41.GL_TEXTURE_MAX_LEVEL, (int) Math.floor(Math.log(Math.max(dimensions.x, dimensions.y)) / Math.log(2)));
+        GL41.glTexParameterf(GL41.GL_TEXTURE_2D, GL41.GL_TEXTURE_LOD_BIAS, 0.0f);
 
         GL41.glBindTexture(GL41.GL_TEXTURE_2D, 0);
     }
@@ -193,6 +204,7 @@ public class Texture extends Component implements ManagerLinkedClass
             ByteBuffer buffer = ByteBuffer.allocateDirect(bytes.length);
             buffer.put(bytes);
             buffer.flip();
+
             return buffer;
         }
         catch (Exception exception)
@@ -232,6 +244,7 @@ public class Texture extends Component implements ManagerLinkedClass
     public static @NotNull Texture create(@NotNull String name, @NotNull Filter filter, @NotNull Wrapping wrapping, @NotNull AssetPath localPath, boolean immediateLoad)
     {
         Texture result = new Texture();
+
         result.setName(name);
         result.setLocalPath(localPath);
         result.setFilter(filter);

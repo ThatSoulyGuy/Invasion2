@@ -156,6 +156,8 @@ public class Mesh extends Component
 
         shader.bind();
 
+        shader.setShaderUniform("diffuse", 0);
+
         if (error != GL41.GL_NO_ERROR)
             System.err.println("OpenGL error at shader binding: " + error + " | " + this);
 

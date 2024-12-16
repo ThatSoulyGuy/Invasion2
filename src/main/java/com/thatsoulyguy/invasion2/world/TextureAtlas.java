@@ -25,6 +25,7 @@ import java.nio.IntBuffer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -38,6 +39,8 @@ public class TextureAtlas extends Component implements ManagerLinkedClass
     private @EffectivelyNotNull String name;
     private @EffectivelyNotNull AssetPath localDirectory;
     private @EffectivelyNotNull String directory;
+
+    private static final int PADDING = 0;
 
     private final @NotNull transient ConcurrentMap<String, Vector2f[]> subTextureMap;
     private @Nullable transient Texture outputTexture = null;
@@ -72,7 +75,7 @@ public class TextureAtlas extends Component implements ManagerLinkedClass
                 }
 
                 images.add(data);
-                totalArea += (long)data.width * (long)data.height;
+                totalArea += (long)data.paddedWidth * (long)data.paddedHeight;
             }
 
             if (images.isEmpty())
@@ -82,7 +85,7 @@ public class TextureAtlas extends Component implements ManagerLinkedClass
             }
 
             int atlasSize = (int)Math.ceil(Math.sqrt(totalArea));
-            images.sort((a, b) -> Integer.compare(b.height, a.height));
+            images.sort((a, b) -> Integer.compare(b.paddedWidth, a.paddedHeight));
 
             ByteBuffer atlasBuffer = createAtlasBuffer(images, atlasSize);
 
@@ -127,6 +130,32 @@ public class TextureAtlas extends Component implements ManagerLinkedClass
         if (uvs == null || rotation == 0.0f)
             return uvs;
 
+        float padding = 0.02f;
+
+        float minX = Float.MAX_VALUE, minY = Float.MAX_VALUE;
+        float maxX = Float.MIN_VALUE, maxY = Float.MIN_VALUE;
+
+        for (Vector2f uv : uvs)
+        {
+            if (uv.x < minX) minX = uv.x;
+            if (uv.y < minY) minY = uv.y;
+            if (uv.x > maxX) maxX = uv.x;
+            if (uv.y > maxY) maxY = uv.y;
+        }
+
+        for (int i = 0; i < uvs.length; i++)
+        {
+            Vector2f uv = uvs[i];
+
+            float adjustedX = Math.max(minX, Math.min(maxX, uv.x));
+            float adjustedY = Math.max(minY, Math.min(maxY, uv.y));
+
+            uvs[i] = new Vector2f(
+                    adjustedX + (uv.x > minX && uv.x < maxX ? padding : 0),
+                    adjustedY + (uv.y > minY && uv.y < maxY ? padding : 0)
+            );
+        }
+
         float centerX = 0.0f;
         float centerY = 0.0f;
 
@@ -135,14 +164,16 @@ public class TextureAtlas extends Component implements ManagerLinkedClass
             centerX += uv.x;
             centerY += uv.y;
         }
+
         centerX /= uvs.length;
         centerY /= uvs.length;
 
-        float radians = (float)Math.toRadians(rotation);
-        float cos = (float)Math.cos(radians);
-        float sin = (float)Math.sin(radians);
+        float radians = (float) Math.toRadians(rotation);
+        float cos = (float) Math.cos(radians);
+        float sin = (float) Math.sin(radians);
 
         Vector2f[] rotatedUVs = new Vector2f[uvs.length];
+
         for (int i = 0; i < uvs.length; i++)
         {
             Vector2f original = uvs[i];
@@ -158,6 +189,7 @@ public class TextureAtlas extends Component implements ManagerLinkedClass
 
         return rotatedUVs;
     }
+
 
     public @NotNull AssetPath getLocalDirectory()
     {
@@ -198,52 +230,56 @@ public class TextureAtlas extends Component implements ManagerLinkedClass
 
         for (ImageData img : images)
         {
-            if (currentX + img.width > atlasSize)
+            if (currentX + img.paddedWidth > atlasSize)
             {
                 currentX = 0;
                 currentY += rowHeight;
                 rowHeight = 0;
             }
 
-            if (currentY + img.height > atlasSize)
+            if (currentY + img.paddedHeight > atlasSize)
             {
                 System.err.println("Cannot fit image: " + img.name + " in atlas.");
                 return null;
             }
 
-            for (int row = 0; row < img.height; row++)
+            for (int row = 0; row < img.paddedHeight; row++)
             {
-                int srcPos = row * img.width * 4;
+                int srcPos = row * img.paddedWidth * 4;
                 int dstPos = ((currentY + row) * atlasSize + currentX) * 4;
 
                 atlasBuffer.position(dstPos);
-                atlasBuffer.put(img.pixels, srcPos, img.width * 4);
+                atlasBuffer.put(img.pixels, srcPos, img.paddedWidth * 4);
             }
 
             float u0 = (float)currentX / (float)atlasSize;
             float v0 = (float)currentY / (float)atlasSize;
-            float u1 = (float)(currentX + img.width) / (float)atlasSize;
-            float v1 = (float)(currentY + img.height) / (float)atlasSize;
+            float u1 = (float)(currentX + img.paddedWidth) / (float)atlasSize;
+            float v1 = (float)(currentY + img.paddedHeight) / (float)atlasSize;
+
+            float invAtlasSize = 1.0f / (float)atlasSize;
+            float padded = PADDING * invAtlasSize;
 
             Vector2f[] uvs = new Vector2f[]
             {
-                new Vector2f(u0, v0),
-                new Vector2f(u0, v1),
-                new Vector2f(u1, v1),
-                new Vector2f(u1, v0)
+                new Vector2f(u0 + padded, v0 + padded),
+                new Vector2f(u0 + padded, v1 - padded),
+                new Vector2f(u1 - padded, v1 - padded),
+                new Vector2f(u1 - padded, v0 + padded)
             };
 
             subTextureMap.put(img.name.replace(".png", ""), uvs);
 
-            currentX += img.width;
+            currentX += img.paddedWidth;
 
-            if (img.height > rowHeight)
-                rowHeight = img.height;
+            if (img.paddedHeight > rowHeight)
+                rowHeight = img.paddedHeight;
         }
 
         atlasBuffer.position(0);
         return atlasBuffer;
     }
+
 
     private List<String> listImageFiles(String directoryPath)
     {
@@ -288,19 +324,69 @@ public class TextureAtlas extends Component implements ManagerLinkedClass
             byte[] pixels = new byte[w * h * 4];
             image.get(pixels);
 
-            //STBImage.stbi_image_free(image); TODO: For some reason this causes a silent crash.
+            //STBImage.stbi_image_free(image); // Keep as is if freeing causes issues
 
             String fileName = new File(resourcePath).getName();
 
             ImageData data = new ImageData();
 
             data.name = fileName;
-            data.width = w;
-            data.height = h;
-            data.pixels = pixels;
+            data.originalWidth = w;
+            data.originalHeight = h;
+            data.paddedWidth = w + 2 * PADDING;
+            data.paddedHeight = h + 2 * PADDING;
+            data.pixels = createPaddedImage(w, h, data.paddedWidth, data.paddedHeight, pixels);
 
             return data;
         }
+    }
+
+    private byte[] createPaddedImage(int w, int h, int paddedW, int paddedH, byte[] originalPixels)
+    {
+        byte[] paddedPixels = new byte[paddedW * paddedH * 4];
+
+        Arrays.fill(paddedPixels, (byte)0x00);
+
+        for (int y = 0; y < h; y++)
+        {
+            for (int x = 0; x < w; x++)
+            {
+                int srcIndex = (y * w + x) * 4;
+                int dstIndex = ((y + PADDING) * paddedW + (x + PADDING)) * 4;
+
+                System.arraycopy(originalPixels, srcIndex, paddedPixels, dstIndex, 4);
+            }
+        }
+
+        for (int x = 0; x < w; x++)
+        {
+            for (int p = 0; p < PADDING; p++)
+            {
+                int srcIndex = ((PADDING) * paddedW + (x + PADDING)) * 4;
+                int dstIndex = (p * paddedW + (x + PADDING)) * 4;
+                System.arraycopy(paddedPixels, srcIndex, paddedPixels, dstIndex, 4);
+
+                srcIndex = ((PADDING + h - 1) * paddedW + (x + PADDING)) * 4;
+                dstIndex = ((paddedH - PADDING + p) * paddedW + (x + PADDING)) * 4;
+                System.arraycopy(paddedPixels, srcIndex, paddedPixels, dstIndex, 4);
+            }
+        }
+
+        for (int y = 0; y < paddedH; y++)
+        {
+            for (int p = 0; p < PADDING; p++)
+            {
+                int srcIndex = (y * paddedW + PADDING) * 4;
+                int dstIndex = (y * paddedW + p) * 4;
+                System.arraycopy(paddedPixels, srcIndex, paddedPixels, dstIndex, 4);
+
+                srcIndex = (y * paddedW + PADDING + w - 1) * 4;
+                dstIndex = (y * paddedW + paddedW - PADDING + p) * 4;
+                System.arraycopy(paddedPixels, srcIndex, paddedPixels, dstIndex, 4);
+            }
+        }
+
+        return paddedPixels;
     }
 
     private ByteBuffer loadResourceAsByteBuffer(@NotNull String resourcePath)
@@ -362,8 +448,10 @@ public class TextureAtlas extends Component implements ManagerLinkedClass
     private static class ImageData
     {
         String name;
-        int width;
-        int height;
+        int originalWidth;
+        int originalHeight;
+        int paddedWidth;
+        int paddedHeight;
         byte[] pixels;
     }
 }

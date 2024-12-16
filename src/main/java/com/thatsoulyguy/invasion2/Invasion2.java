@@ -2,13 +2,11 @@ package com.thatsoulyguy.invasion2;
 
 import com.thatsoulyguy.invasion2.annotation.EffectivelyNotNull;
 import com.thatsoulyguy.invasion2.block.BlockRegistry;
-import com.thatsoulyguy.invasion2.collider.colliders.BoxCollider;
 import com.thatsoulyguy.invasion2.core.Time;
 import com.thatsoulyguy.invasion2.core.Window;
 import com.thatsoulyguy.invasion2.entity.Entity;
 import com.thatsoulyguy.invasion2.entity.entities.EntityPlayer;
 import com.thatsoulyguy.invasion2.input.InputManager;
-import com.thatsoulyguy.invasion2.math.Rigidbody;
 import com.thatsoulyguy.invasion2.render.*;
 import com.thatsoulyguy.invasion2.system.GameObject;
 import com.thatsoulyguy.invasion2.system.GameObjectManager;
@@ -79,8 +77,8 @@ public class Invasion2
 
         player.getTransform().setLocalPosition(new Vector3f(0.0f, 180.0f, 0.0f));
 
-        player.addComponent(BoxCollider.create(new Vector3f(0.65f, 1.89f, 0.65f)));
-        player.addComponent(Rigidbody.create());
+        //player.addComponent(BoxCollider.create(new Vector3f(0.65f, 1.89f, 0.65f)));
+        //player.addComponent(Rigidbody.create());
         player.addComponent(Entity.create(EntityPlayer.class));
 
         world = GameObject.create("world");

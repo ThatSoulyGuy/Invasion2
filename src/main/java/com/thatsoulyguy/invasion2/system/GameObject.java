@@ -46,6 +46,11 @@ public class GameObject implements Serializable
         return clazz.cast(componentMap.get(clazz));
     }
 
+    public @NotNull <T extends Component> T getComponentNotNull(@NotNull Class<T> clazz)
+    {
+        return clazz.cast(componentMap.get(clazz));
+    }
+
     public <T extends Component> boolean hasComponent(@NotNull Class<T> clazz)
     {
         return componentMap.containsKey(clazz);
@@ -89,7 +94,7 @@ public class GameObject implements Serializable
             getTransform().setParent(null);
     }
 
-    public void addChild(@NotNull GameObject child)
+    public @NotNull GameObject addChild(@NotNull GameObject child)
     {
         if (isAncestor(child))
             throw new IllegalArgumentException("Cannot add ancestor as child to prevent circular reference.");
@@ -98,6 +103,8 @@ public class GameObject implements Serializable
 
         children.put(child.name, child);
         child.setParent(this);
+
+        return child;
     }
 
     public void removeChild(@NotNull GameObject child)

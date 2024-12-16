@@ -2,84 +2,110 @@ package com.thatsoulyguy.invasion2.collider.colliders;
 
 import com.thatsoulyguy.invasion2.annotation.CustomConstructor;
 import com.thatsoulyguy.invasion2.collider.Collider;
-import com.thatsoulyguy.invasion2.collider.SweptAABBTester;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 @CustomConstructor("create")
 public class VoxelMeshCollider extends Collider
 {
-    private final List<Vector3f> voxels = new ArrayList<>();
+    private @NotNull List<Vector3f> voxels = new ArrayList<>();
 
     private VoxelMeshCollider() { }
 
     @Override
     public boolean intersects(@NotNull Collider other)
     {
-        if (other instanceof BoxCollider box)
-            return intersectsBox(box);
-        else if (other instanceof VoxelMeshCollider vm)
-            return intersectsVoxelMesh(vm);
+        for (Vector3f voxel : voxels)
+        {
+            Vector3f voxelWorldPos = new Vector3f(getPosition()).add(voxel);
+            Vector3f voxelMin = new Vector3f(voxelWorldPos).sub(0.5f, 0.5f, 0.5f);
+            Vector3f voxelMax = new Vector3f(voxelWorldPos).add(0.5f, 0.5f, 0.5f);
+
+            if (other instanceof BoxCollider boxCollider)
+            {
+                if (intersectAABBs(voxelMin, voxelMax, boxCollider))
+                    return true;
+            }
+            else if (other instanceof VoxelMeshCollider voxelMeshCollider)
+            {
+                if (intersectVoxelMesh(voxelMin, voxelMax, voxelMeshCollider))
+                    return true;
+            }
+        }
+
         return false;
     }
 
     @Override
-    public @NotNull Vector3f resolve(@NotNull Collider other)
+    public @Nullable Vector3f resolve(@NotNull Collider other)
     {
-        if (other instanceof BoxCollider box)
-            return resolveWithBox(box);
-        else if (other instanceof VoxelMeshCollider vm)
-            return resolveWithVoxelMesh(vm);
+        Vector3f smallestResolution = null;
+        float smallestMagnitude = Float.MAX_VALUE;
 
-        return new Vector3f();
-    }
+        for (Vector3f voxel : voxels)
+        {
+            Vector3f voxelWorldPos = new Vector3f(getPosition()).add(voxel);
+            Vector3f voxelMin = new Vector3f(voxelWorldPos).sub(0.5f, 0.5f, 0.5f);
+            Vector3f voxelMax = new Vector3f(voxelWorldPos).add(0.5f, 0.5f, 0.5f);
 
-    @Override
-    public @Nullable Float sweepTest(@NotNull Collider other, @NotNull Vector3f displacement)
-    {
-        if (other instanceof BoxCollider box)
-            return sweepTestBox(box, displacement);
-        else if (other instanceof VoxelMeshCollider vm)
-            return sweepTestVoxelMesh(vm, displacement);
+            Vector3f resolution = null;
 
-        return null;
+            if (other instanceof BoxCollider boxCollider)
+                resolution = resolveAABBs(voxelMin, voxelMax, boxCollider);
+            else if (other instanceof VoxelMeshCollider voxelMeshCollider)
+                resolution = resolveVoxelMesh(voxelMin, voxelMax, voxelMeshCollider);
+
+            if (resolution != null)
+            {
+                float mag = resolution.length();
+
+                if (mag < smallestMagnitude)
+                {
+                    smallestMagnitude = mag;
+                    smallestResolution = resolution;
+                }
+            }
+        }
+
+        if (smallestResolution != null)
+        {
+            applyResolution(other, smallestResolution);
+        }
+
+        return smallestResolution;
     }
 
     @Override
     public @Nullable Vector3f rayIntersect(@NotNull Vector3f origin, @NotNull Vector3f direction)
     {
-        Vector3f closestHit = null;
-
+        Vector3f closestIntersection = null;
         float closestDistance = Float.MAX_VALUE;
 
         for (Vector3f voxel : voxels)
         {
-            Vector3f voxelWorldPosition = new Vector3f(getPosition()).add(voxel);
-            Vector3f voxelHalf = new Vector3f(0.5f, 0.5f, 0.5f);
+            Vector3f voxelWorldPos = new Vector3f(getPosition()).add(voxel);
+            Vector3f voxelMin = new Vector3f(voxelWorldPos).sub(0.5f, 0.5f, 0.5f);
+            Vector3f voxelMax = new Vector3f(voxelWorldPos).add(0.5f, 0.5f, 0.5f);
 
-            Vector3f voxelMin = voxelWorldPosition.sub(voxelHalf, new Vector3f());
-            Vector3f voxelMax = voxelWorldPosition.add(voxelHalf, new Vector3f());
+            Vector3f intersection = Collider.rayIntersectGeneric(voxelMin, voxelMax, origin, direction);
 
-            Vector3f hit = Collider.rayIntersectGeneric(voxelMin, voxelMax, origin, direction);
-
-            if (hit != null)
+            if (intersection != null)
             {
-                float distance = hit.distance(origin);
+                float distance = new Vector3f(intersection).sub(origin).length();
 
                 if (distance < closestDistance)
                 {
                     closestDistance = distance;
-                    closestHit = hit;
+                    closestIntersection = intersection;
                 }
             }
         }
 
-        return closestHit;
+        return closestIntersection;
     }
 
     @Override
@@ -88,204 +114,110 @@ public class VoxelMeshCollider extends Collider
         return getGameObject().getTransform().getWorldPosition();
     }
 
-    public void setVoxels(@NotNull List<Vector3f> positions)
+    @Override
+    public @NotNull Vector3f getSize()
     {
-        voxels.clear();
-        voxels.addAll(positions);
+        float minX = Float.MAX_VALUE, minY = Float.MAX_VALUE, minZ = Float.MAX_VALUE;
+        float maxX = -Float.MAX_VALUE, maxY = -Float.MAX_VALUE, maxZ = -Float.MAX_VALUE;
+
+        for (Vector3f voxel : voxels)
+        {
+            minX = Math.min(minX, voxel.x);
+            minY = Math.min(minY, voxel.y);
+            minZ = Math.min(minZ, voxel.z);
+            maxX = Math.max(maxX, voxel.x);
+            maxY = Math.max(maxY, voxel.y);
+            maxZ = Math.max(maxZ, voxel.z);
+        }
+
+        return new Vector3f(maxX - minX, maxY - minY, maxZ - minZ);
+    }
+
+    public void setVoxels(@NotNull List<Vector3f> voxels)
+    {
+        this.voxels = new ArrayList<>(voxels);
     }
 
     public @NotNull List<Vector3f> getVoxels()
     {
-        return voxels;
+        return new ArrayList<>(voxels);
     }
 
-    private boolean intersectsBox(BoxCollider box)
+    private boolean intersectAABBs(@NotNull Vector3f aMin, @NotNull Vector3f aMax, @NotNull BoxCollider box)
     {
-        Vector3f boxPos = box.getPosition();
-        Vector3f boxHalf = new Vector3f(box.getSize()).mul(0.5f);
+        Vector3f bMin = new Vector3f(box.getPosition()).sub(0.5f, 0.5f, 0.5f);
+        Vector3f bMax = new Vector3f(box.getPosition()).add(0.5f, 0.5f, 0.5f);
 
-        Vector3f thisPos = getPosition();
+        return Collider.intersectGeneric(aMin, aMax, bMin, bMax);
+    }
 
-        for (Vector3f v : voxels)
+    private @Nullable Vector3f resolveAABBs(@NotNull Vector3f aMin, @NotNull Vector3f aMax, @NotNull BoxCollider box)
+    {
+        Vector3f bMin = new Vector3f(box.getPosition()).sub(0.5f, 0.5f, 0.5f);
+        Vector3f bMax = new Vector3f(box.getPosition()).add(0.5f, 0.5f, 0.5f);
+
+        return Collider.resolveGeneric(aMin, aMax, bMin, bMax);
+    }
+
+    private boolean intersectVoxelMesh(@NotNull Vector3f aMin, @NotNull Vector3f aMax, @NotNull VoxelMeshCollider voxelMesh)
+    {
+        for (Vector3f otherVoxel : voxelMesh.getVoxels())
         {
-            Vector3f voxelPos = new Vector3f(thisPos).add(v);
+            Vector3f otherVoxelWorldPos = new Vector3f(voxelMesh.getPosition()).add(otherVoxel);
+            Vector3f otherMin = new Vector3f(otherVoxelWorldPos).sub(0.5f, 0.5f, 0.5f);
+            Vector3f otherMax = new Vector3f(otherVoxelWorldPos).add(0.5f, 0.5f, 0.5f);
 
-            Vector3f minV = new Vector3f(voxelPos).sub(0.5f,0.5f,0.5f);
-            Vector3f maxV = new Vector3f(voxelPos).add(0.5f,0.5f,0.5f);
-
-            Vector3f minB = new Vector3f(boxPos).sub(boxHalf);
-            Vector3f maxB = new Vector3f(boxPos).add(boxHalf);
-
-            if (aabbIntersect(minV, maxV, minB, maxB))
+            if (Collider.intersectGeneric(aMin, aMax, otherMin, otherMax))
                 return true;
         }
 
         return false;
     }
 
-    private boolean intersectsVoxelMesh(VoxelMeshCollider other)
+    private @Nullable Vector3f resolveVoxelMesh(@NotNull Vector3f aMin, @NotNull Vector3f aMax, @NotNull VoxelMeshCollider voxelMesh)
     {
-        Vector3f thisPos = getPosition();
-        Vector3f otherPos = other.getPosition();
+        Vector3f resolution = null;
 
-        for (Vector3f va : voxels)
+        for (Vector3f otherVoxel : voxelMesh.getVoxels())
         {
-            Vector3f voxelA = new Vector3f(thisPos).add(va);
-            Vector3f minA = new Vector3f(voxelA).sub(new Vector3f(0.5f));
-            Vector3f maxA = new Vector3f(voxelA).add(new Vector3f(0.5f));
+            Vector3f otherVoxelWorldPos = new Vector3f(voxelMesh.getPosition()).add(otherVoxel);
+            Vector3f otherMin = new Vector3f(otherVoxelWorldPos).sub(0.5f, 0.5f, 0.5f);
+            Vector3f otherMax = new Vector3f(otherVoxelWorldPos).add(0.5f, 0.5f, 0.5f);
+            Vector3f res = Collider.resolveGeneric(aMin, aMax, otherMin, otherMax);
 
-            for (Vector3f vb : other.voxels)
+            if (res != null)
             {
-                Vector3f voxelB = new Vector3f(otherPos).add(vb);
-                Vector3f minB = new Vector3f(voxelB).sub(new Vector3f(0.5f));
-                Vector3f maxB = new Vector3f(voxelB).add(new Vector3f(0.5f));
-
-                if (aabbIntersect(minA, maxA, minB, maxB))
-                    return true;
+                if (resolution == null || res.length() < resolution.length())
+                    resolution = res;
             }
         }
 
-        return false;
+        return resolution;
     }
 
-    private @NotNull Vector3f resolveWithBox(BoxCollider box)
+    private void applyResolution(Collider other, Vector3f resolution)
     {
-        Vector3f thisPos = getPosition();
-        Vector3f boxPos = box.getPosition();
-        Vector3f boxHalf = new Vector3f(box.getSize()).mul(0.5f);
+        boolean vmcDynamic = isDynamic();
+        boolean otherDynamic = other.isDynamic();
 
-        float smallestOverlap = Float.MAX_VALUE;
-        Vector3f finalMtv = new Vector3f();
-
-        for (Vector3f v : voxels)
+        if (vmcDynamic && otherDynamic)
         {
-            Vector3f voxelPos = new Vector3f(thisPos).add(v);
-            Vector3f minV = new Vector3f(voxelPos).sub(new Vector3f(0.5f));
-            Vector3f maxV = new Vector3f(voxelPos).add(new Vector3f(0.5f));
+            Vector3f vmcSize = getSize();
+            Vector3f otherSize = other.getSize();
+            float totalSize = vmcSize.length() + otherSize.length();
 
-            Vector3f minB = new Vector3f(boxPos).sub(boxHalf);
-            Vector3f maxB = new Vector3f(boxPos).add(boxHalf);
+            if (totalSize == 0) totalSize = 1;
 
-            Vector3f mtv = resolveGeneric(minB, maxB, minV, maxV);
-            if (mtv != null)
-            {
-                float mag = mtv.lengthSquared();
-                if (mag < smallestOverlap)
-                {
-                    smallestOverlap = mag;
-                    finalMtv.set(mtv);
-                }
-            }
+            Vector3f vmcMove = new Vector3f(resolution).mul(vmcSize.length() / totalSize);
+            Vector3f otherMove = new Vector3f(resolution).mul(-otherSize.length() / totalSize);
+
+            getGameObject().getTransform().translate(vmcMove);
+            other.getGameObject().getTransform().translate(otherMove);
         }
-
-        if (smallestOverlap < Float.MAX_VALUE)
-        {
-            box.getGameObject().getTransform().translate(finalMtv);
-
-            return finalMtv;
-        }
-
-        return new Vector3f();
-    }
-
-    private @NotNull Vector3f resolveWithVoxelMesh(VoxelMeshCollider other)
-    {
-        Vector3f thisPos = getPosition();
-        Vector3f otherPos = other.getPosition();
-
-        float smallestOverlap = Float.MAX_VALUE;
-        Vector3f finalMtv = new Vector3f();
-
-        for (Vector3f va : voxels)
-        {
-            Vector3f voxelA = new Vector3f(thisPos).add(va);
-            Vector3f minA = new Vector3f(voxelA).sub(new Vector3f(0.5f));
-            Vector3f maxA = new Vector3f(voxelA).add(new Vector3f(0.5f));
-
-            for (Vector3f vb : other.voxels)
-            {
-                Vector3f voxelB = new Vector3f(otherPos).add(vb);
-                Vector3f minB = new Vector3f(voxelB).sub(new Vector3f(0.5f));
-                Vector3f maxB = new Vector3f(voxelB).add(new Vector3f(0.5f));
-
-                Vector3f mtv = resolveGeneric(minA, maxA, minB, maxB);
-                if (mtv != null)
-                {
-                    float mag = mtv.lengthSquared();
-                    if (mag < smallestOverlap)
-                    {
-                        smallestOverlap = mag;
-                        finalMtv.set(mtv);
-                    }
-                }
-            }
-        }
-
-        if (smallestOverlap < Float.MAX_VALUE)
-        {
-            getGameObject().getTransform().translate(finalMtv);
-            return finalMtv;
-        }
-
-        return new Vector3f();
-    }
-
-    private @Nullable Float sweepTestBox(BoxCollider box, Vector3f displacement)
-    {
-        Vector3f thisPos = getPosition();
-
-        Float earliest = null;
-
-        List<Vector3f> voxelSnapshot = new ArrayList<>(voxels);
-        for (Vector3f v : voxelSnapshot)
-        {
-            Vector3f voxelPos = new Vector3f(thisPos).add(v);
-            Vector3f minV = new Vector3f(voxelPos).sub(new Vector3f(0.5f));
-            Vector3f maxV = new Vector3f(voxelPos).add(new Vector3f(0.5f));
-
-            Vector3f boxPos = box.getPosition();
-            Vector3f boxHalf = new Vector3f(box.getSize()).mul(0.5f);
-            Vector3f minB = new Vector3f(boxPos).sub(boxHalf);
-            Vector3f maxB = new Vector3f(boxPos).add(boxHalf);
-
-            Vector3f negDisplacement = new Vector3f(displacement).negate();
-
-            Float t = SweptAABBTester.sweptAABB(minB, maxB, minV, maxV, negDisplacement);
-
-            if (t != null && (earliest == null || t < earliest))
-                earliest = t;
-        }
-
-        return earliest;
-    }
-
-    private @Nullable Float sweepTestVoxelMesh(VoxelMeshCollider other, Vector3f displacement)
-    {
-        Float earliest = null;
-
-        Vector3f thisPos = getPosition();
-        Vector3f otherPos = other.getPosition();
-
-        for (Vector3f va : voxels)
-        {
-            Vector3f voxelA = new Vector3f(thisPos).add(va);
-            Vector3f minA = new Vector3f(voxelA).sub(new Vector3f(0.5f));
-            Vector3f maxA = new Vector3f(voxelA).add(new Vector3f(0.5f));
-
-            for (Vector3f vb : other.voxels)
-            {
-                Vector3f voxelB = new Vector3f(otherPos).add(vb);
-                Vector3f minB = new Vector3f(voxelB).sub(new Vector3f(0.5f));
-                Vector3f maxB = new Vector3f(voxelB).add(new Vector3f(0.5f));
-
-                Float t = SweptAABBTester.sweptAABB(minA, maxA, minB, maxB, displacement);
-
-                if (t != null && (earliest == null || t < earliest))
-                    earliest = t;
-            }
-        }
-
-        return earliest;
+        else if (vmcDynamic)
+            getGameObject().getTransform().translate(resolution);
+        else if (other.isDynamic())
+            other.getGameObject().getTransform().translate(new Vector3f(resolution).negate());
     }
 
     public static @NotNull VoxelMeshCollider create()

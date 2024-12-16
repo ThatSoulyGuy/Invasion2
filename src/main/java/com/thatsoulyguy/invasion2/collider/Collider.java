@@ -5,8 +5,13 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
 
+/**
+ * An abstract class for collisions and collider-related topics
+ */
 public abstract class Collider extends Component
 {
+    private boolean isDynamic = true;
+
     @Override
     public void initialize()
     {
@@ -21,21 +26,61 @@ public abstract class Collider extends Component
 
     public abstract boolean intersects(@NotNull Collider other);
 
-    public abstract @NotNull Vector3f resolve(@NotNull Collider other);
-
-    public abstract @Nullable Float sweepTest(@NotNull Collider other, @NotNull Vector3f displacement);
+    public abstract @Nullable Vector3f resolve(@NotNull Collider other);
 
     public abstract @Nullable Vector3f rayIntersect(@NotNull Vector3f origin, @NotNull Vector3f direction);
 
     public abstract @NotNull Vector3f getPosition();
 
-    public static boolean aabbIntersect(@NotNull Vector3f minA, @NotNull Vector3f maxA, @NotNull Vector3f minB, @NotNull Vector3f maxB)
+    public abstract @NotNull Vector3f getSize();
+
+    /**
+     * A function to set if a collider is movable
+     *
+     * @param isDynamic Weather or not this collider is movable
+     */
+    public void setDynamic(boolean isDynamic)
+    {
+        this.isDynamic = isDynamic;
+    }
+
+    /**
+     * A function to determine if a collider is movable
+     *
+     * @return Weather or not this collider is movable
+     */
+    public boolean isDynamic()
+    {
+        return isDynamic;
+    }
+
+    /**
+     * A generic function to detect an intersection between two AABBs
+     *
+     * @param minA The minimum bound of collider A
+     * @param maxA The maximum bound of collider A
+     * @param minB The minimum bound of collider B
+     * @param maxB The maximum bound of collider B
+     *
+     * @return Weather or not A and B intersect.
+     */
+    public static boolean intersectGeneric(@NotNull Vector3f minA, @NotNull Vector3f maxA, @NotNull Vector3f minB, @NotNull Vector3f maxB)
     {
         return !(maxA.x < minB.x || minA.x > maxB.x ||
                 maxA.y < minB.y || minA.y > maxB.y ||
                 maxA.z < minB.z || minA.z > maxB.z);
     }
 
+    /**
+     * A generic function to resolve an intersection between two AABBs
+     *
+     * @param minA The minimum bound of collider A
+     * @param maxA The maximum bound of collider A
+     * @param minB The minimum bound of collider B
+     * @param maxB The maximum bound of collider B
+     *
+     * @return The movement required to resolve the collision
+     */
     public static @Nullable Vector3f resolveGeneric(Vector3f minA, Vector3f maxA, Vector3f minB, Vector3f maxB)
     {
         float overlapX = Math.min(maxA.x - minB.x, maxB.x - minA.x);
@@ -73,6 +118,16 @@ public abstract class Collider extends Component
         return mtv;
     }
 
+    /**
+     * A generic function to detect a ray intersection on an AABB
+     *
+     * @param min The minimum bound of the collider
+     * @param max The maximum bound of the collider
+     * @param origin The origin of the ray's caster
+     * @param direction The direction of the ray's caster
+     *
+     * @return The point of intersection
+     */
     public static @Nullable Vector3f rayIntersectGeneric(@NotNull Vector3f min, @NotNull Vector3f max, @NotNull Vector3f origin, @NotNull Vector3f direction)
     {
         final float EPSILON = 1e-8f;

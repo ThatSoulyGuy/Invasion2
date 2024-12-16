@@ -26,6 +26,9 @@ public class Transform extends Component
 
     public void translate(@NotNull Vector3f translation)
     {
+        if (!Float.isFinite(translation.x) || !Float.isFinite(translation.y) || !Float.isFinite(translation.z))
+            return;
+
         localPosition.add(translation);
     }
 
