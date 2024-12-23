@@ -1,16 +1,22 @@
 package com.thatsoulyguy.invasion2.collider;
 
+import com.thatsoulyguy.invasion2.collider.colliders.BoxCollider;
+import com.thatsoulyguy.invasion2.collider.colliders.VoxelMeshCollider;
+import com.thatsoulyguy.invasion2.collider.handler.CollisionHandlerManager;
+import com.thatsoulyguy.invasion2.render.DebugRenderer;
 import com.thatsoulyguy.invasion2.system.Component;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
 
 /**
- * An abstract class for collisions and collider-related topics
+ * An interface for collisions and collider-related topics
  */
 public abstract class Collider extends Component
 {
-    private boolean isDynamic = true;
+    private static final float EPSILON = 1e-6f;
+
+    private boolean isRegistered = false;
 
     @Override
     public void initialize()
@@ -24,98 +30,228 @@ public abstract class Collider extends Component
         ColliderManager.unregister(getGameObject());
     }
 
-    public abstract boolean intersects(@NotNull Collider other);
-
-    public abstract @Nullable Vector3f resolve(@NotNull Collider other);
+    @Override
+    public void onLoad()
+    {
+        if (isRegistered)
+            ColliderManager.register(this);
+    }
 
     public abstract @Nullable Vector3f rayIntersect(@NotNull Vector3f origin, @NotNull Vector3f direction);
 
+    /**
+     * Gets the world position of the collider.
+     * @return The position as a Vector3f.
+     */
     public abstract @NotNull Vector3f getPosition();
 
+    /**
+     * Returns the centered position of the collider.
+     *
+     * @return The center position as a Vector3f.
+     */
+    public Vector3f getCenteredPosition()
+    {
+        return new Vector3f(getPosition()).add(new Vector3f(getSize()).mul(0.5f));
+    }
+
+    /**
+     * Determines if one AABB is on top of another AABB.
+     * <p>
+     * "On top" is defined as:
+     * - The AABBs overlap on the X and Z axes.
+     * - One AABB is entirely above or below the other along the Y axis.
+     *
+     * @param aMin The minimum (x, y, z) coordinates of Box A.
+     * @param aMax The maximum (x, y, z) coordinates of Box A.
+     * @param bMin The minimum (x, y, z) coordinates of Box B.
+     * @param bMax The maximum (x, y, z) coordinates of Box B.
+     * @return True if one AABB is on top of the other; false otherwise.
+     */
+    public static boolean isOnTopOf(@NotNull Vector3f aMin, @NotNull Vector3f aMax, @NotNull Vector3f bMin, @NotNull Vector3f bMax)
+    {
+        boolean overlapX = aMax.x >= bMin.x && aMin.x <= bMax.x;
+        boolean overlapZ = aMax.z >= bMin.z && aMin.z <= bMax.z;
+
+        if (!(overlapX && overlapZ))
+            return false;
+
+        final float EPSILON = 1e-3f;
+
+        boolean aOnTopOfB = aMin.y >= bMax.y - EPSILON && aMin.y <= bMax.y + EPSILON;
+        boolean bOnTopOfA = bMin.y >= aMax.y - EPSILON && bMin.y <= aMax.y + EPSILON;
+
+        return aOnTopOfB || bOnTopOfA;
+    }
+
+    /**
+     * Gets the size or dimensions of the collider.
+     * @return The size as a Vector3f.
+     */
     public abstract @NotNull Vector3f getSize();
 
     /**
-     * A function to set if a collider is movable
-     *
-     * @param isDynamic Weather or not this collider is movable
+     * Checks if this collider intersects with another collider.
+     * @param other The other collider.
+     * @return True if they intersect, false otherwise.
      */
-    public void setDynamic(boolean isDynamic)
+    public boolean intersects(@NotNull Collider other)
     {
-        this.isDynamic = isDynamic;
+        return CollisionHandlerManager.intersects(this, other);
     }
 
     /**
-     * A function to determine if a collider is movable
-     *
-     * @return Weather or not this collider is movable
+     * Resolves the collision between this collider and another collider.
+     * @param other The other collider.
+     * @param selfIsMovable Indicates if this collider is movable.
+     * @return A Vector3f representing the resolution vector.
      */
-    public boolean isDynamic()
+    public @NotNull Vector3f resolve(@NotNull Collider other, boolean selfIsMovable)
     {
-        return isDynamic;
+        return CollisionHandlerManager.resolve(this, other, selfIsMovable);
+    }
+
+    public void setIsRegistered(boolean isRegistered)
+    {
+        this.isRegistered = isRegistered;
     }
 
     /**
-     * A generic function to detect an intersection between two AABBs
+     * Determines if two Axis-Aligned Bounding Boxes (AABBs) intersect.
      *
-     * @param minA The minimum bound of collider A
-     * @param maxA The maximum bound of collider A
-     * @param minB The minimum bound of collider B
-     * @param maxB The maximum bound of collider B
-     *
-     * @return Weather or not A and B intersect.
+     * @param aMin The minimum (x, y, z) coordinates of Box A.
+     * @param aMax The maximum (x, y, z) coordinates of Box A.
+     * @param bMin The minimum (x, y, z) coordinates of Box B.
+     * @param bMax The maximum (x, y, z) coordinates of Box B.
+     * @return True if the boxes intersect; false otherwise.
      */
-    public static boolean intersectGeneric(@NotNull Vector3f minA, @NotNull Vector3f maxA, @NotNull Vector3f minB, @NotNull Vector3f maxB)
+    public static boolean intersectsGeneric(@NotNull Vector3f aMin, @NotNull Vector3f aMax, @NotNull Vector3f bMin, @NotNull Vector3f bMax)
     {
-        return !(maxA.x < minB.x || minA.x > maxB.x ||
-                maxA.y < minB.y || minA.y > maxB.y ||
-                maxA.z < minB.z || minA.z > maxB.z);
+        return (aMin.x <= bMax.x && aMax.x >= bMin.x) && (aMin.y <= bMax.y && aMax.y >= bMin.y) && (aMin.z <= bMax.z && aMax.z >= bMin.z);
     }
 
     /**
      * A generic function to resolve an intersection between two AABBs
      *
-     * @param minA The minimum bound of collider A
-     * @param maxA The maximum bound of collider A
-     * @param minB The minimum bound of collider B
-     * @param maxB The maximum bound of collider B
+     * @param aMin The minimum bound of collider A
+     * @param aMax The maximum bound of collider A
+     * @param bMin The minimum bound of collider B
+     * @param bMax The maximum bound of collider B
      *
      * @return The movement required to resolve the collision
      */
-    public static @Nullable Vector3f resolveGeneric(Vector3f minA, Vector3f maxA, Vector3f minB, Vector3f maxB)
+    public static @Nullable Vector3f resolveGeneric(@NotNull Vector3f aMin, @NotNull Vector3f aMax, @NotNull Vector3f bMin, @NotNull Vector3f bMax)
     {
-        float overlapX = Math.min(maxA.x - minB.x, maxB.x - minA.x);
-        float overlapY = Math.min(maxA.y - minB.y, maxB.y - minA.y);
-        float overlapZ = Math.min(maxA.z - minB.z, maxB.z - minA.z);
+        float overlapX = Math.min(aMax.x - bMin.x, bMax.x - aMin.x);
+        float overlapY = Math.min(aMax.y - bMin.y, bMax.y - aMin.y);
+        float overlapZ = Math.min(aMax.z - bMin.z, bMax.z - aMin.z);
 
-        if (overlapX <= 0 || overlapY <= 0 || overlapZ <= 0)
+        final float EPSILON = 1e-5f;
+
+        if (overlapX < EPSILON || overlapY < EPSILON || overlapZ < EPSILON)
             return null;
 
-        float minOverlap = Math.min(overlapX, Math.min(overlapY, overlapZ));
-        Vector3f mtv = new Vector3f();
+        Vector3f mtv = new Vector3f(0, 0, 0);
 
-        if (minOverlap == overlapX)
+        if (overlapY <= overlapX && overlapY <= overlapZ)
         {
-            float centerA = (minA.x + maxA.x)*0.5f;
-            float centerB = (minB.x + maxB.x)*0.5f;
-
-            mtv.x = centerA < centerB ? -overlapX : overlapX;
-        }
-        else if (minOverlap == overlapY)
-        {
-            float centerA = (minA.y + maxA.y)*0.5f;
-            float centerB = (minB.y + maxB.y)*0.5f;
+            float centerA = (aMin.y + aMax.y) / 2.0f;
+            float centerB = (bMin.y + bMax.y) / 2.0f;
 
             mtv.y = centerA < centerB ? -overlapY : overlapY;
         }
+        else if (overlapX <= overlapY && overlapX <= overlapZ)
+        {
+            float centerA = (aMin.x + aMax.x) / 2.0f;
+            float centerB = (bMin.x + bMax.x) / 2.0f;
+
+            mtv.x = centerA < centerB ? -overlapX : overlapX;
+        }
         else
         {
-            float centerA = (minA.z + maxA.z)*0.5f;
-            float centerB = (minB.z + maxB.z)*0.5f;
+            float centerA = (aMin.z + aMax.z) / 2.0f;
+            float centerB = (bMin.z + bMax.z) / 2.0f;
 
             mtv.z = centerA < centerB ? -overlapZ : overlapZ;
         }
 
         return mtv;
+    }
+
+    public static Vector3f resolveAxisCollisions(BoxCollider box, VoxelMeshCollider voxelMesh, String axis, int maxIterations)
+    {
+        Vector3f totalResolution = new Vector3f();
+
+        for (int iteration = 0; iteration < maxIterations; iteration++)
+        {
+            Vector3f boxPos = box.getPosition();
+            Vector3f boxSize = box.getSize();
+
+            Vector3f boxMin = new Vector3f(boxPos).sub(new Vector3f(boxSize).mul(0.5f));
+            Vector3f boxMax = new Vector3f(boxPos).add(new Vector3f(boxSize).mul(0.5f));
+
+            Vector3f meshCenter = voxelMesh.getCenteredPosition();
+            Vector3f meshSize = voxelMesh.getSize();
+
+            Vector3f meshMin = new Vector3f(meshCenter).sub(new Vector3f(meshSize).mul(0.5f));
+            Vector3f meshMax = new Vector3f(meshCenter).add(new Vector3f(meshSize).mul(0.5f));
+
+            if (!Collider.intersectsGeneric(boxMin, boxMax, meshMin, meshMax))
+                break;
+
+            Vector3f smallestResolution = null;
+            float smallestOverlap = Float.MAX_VALUE;
+
+            for (Vector3f voxel : voxelMesh.getVoxels())
+            {
+                Vector3f voxelWorldPos = new Vector3f(voxelMesh.getPosition()).add(voxel);
+
+                Vector3f voxelMin = new Vector3f(voxelWorldPos).sub(0.5f, 0.5f, 0.5f);
+                Vector3f voxelMax = new Vector3f(voxelWorldPos).add(0.5f, 0.5f, 0.5f);
+
+                if (Collider.intersectsGeneric(boxMin, boxMax, voxelMin, voxelMax))
+                {
+                    Vector3f resolution = Collider.resolveGeneric(boxMin, boxMax, voxelMin, voxelMax);
+
+                    if (resolution != null)
+                    {
+                        float axisOverlap = 0f;
+
+                        switch (axis)
+                        {
+                            case "x" -> axisOverlap = Math.abs(resolution.x);
+                            case "y" -> axisOverlap = Math.abs(resolution.y);
+                            case "z" -> axisOverlap = Math.abs(resolution.z);
+                        }
+
+                        if (axisOverlap != 0f && axisOverlap < smallestOverlap)
+                        {
+                            smallestOverlap = axisOverlap;
+                            smallestResolution = resolution;
+                        }
+                    }
+                }
+            }
+
+            if (smallestResolution != null)
+            {
+                Vector3f push = switch (axis)
+                {
+                    case "x" -> new Vector3f(smallestResolution.x, 0, 0);
+                    case "y" -> new Vector3f(0, smallestResolution.y, 0);
+                    case "z" -> new Vector3f(0, 0, smallestResolution.z);
+                    case null, default -> new Vector3f();
+                };
+
+                box.getGameObject().getTransform().translate(push);
+                totalResolution.add(push);
+
+            }
+            else
+                break;
+        }
+
+        return totalResolution;
     }
 
     /**

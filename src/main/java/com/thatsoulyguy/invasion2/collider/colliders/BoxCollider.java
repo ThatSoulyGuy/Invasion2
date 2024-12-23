@@ -15,49 +15,12 @@ public class BoxCollider extends Collider
     private BoxCollider() { }
 
     @Override
-    public boolean intersects(@NotNull Collider other)
-    {
-        Vector3f selfHalfPosition = getPosition().div(2.0f);
-        Vector3f selfMin = selfHalfPosition.sub(new Vector3f(size).div(2.0f), new Vector3f());
-        Vector3f selfMax = selfHalfPosition.add(new Vector3f(size).div(2.0f), new Vector3f());
-
-        if (other instanceof BoxCollider boxCollider)
-        {
-            Vector3f otherHalfPosition = boxCollider.getPosition().div(2.0f);
-            Vector3f otherMin = otherHalfPosition.sub(new Vector3f(boxCollider.size).div(2.0f), new Vector3f());
-            Vector3f otherMax = otherHalfPosition.add(new Vector3f(boxCollider.size).div(2.0f), new Vector3f());
-
-            return Collider.intersectGeneric(selfMin, selfMax, otherMin, otherMax);
-        }
-
-        return false;
-    }
-
-    @Override
-    public @Nullable Vector3f resolve(@NotNull Collider other)
-    {
-        Vector3f selfHalfPosition = getPosition().div(2.0f);
-        Vector3f selfMin = selfHalfPosition.sub(new Vector3f(size).div(2.0f), new Vector3f());
-        Vector3f selfMax = selfHalfPosition.add(new Vector3f(size).div(2.0f), new Vector3f());
-
-        if (other instanceof BoxCollider boxCollider)
-        {
-            Vector3f otherHalfPosition = boxCollider.getPosition().div(2.0f);
-            Vector3f otherMin = otherHalfPosition.sub(new Vector3f(boxCollider.size).div(2.0f), new Vector3f());
-            Vector3f otherMax = otherHalfPosition.add(new Vector3f(boxCollider.size).div(2.0f), new Vector3f());
-
-            return Collider.resolveGeneric(selfMin, selfMax, otherMin, otherMax);
-        }
-
-        return new Vector3f();
-    }
-
-    @Override
     public @Nullable Vector3f rayIntersect(@NotNull Vector3f origin, @NotNull Vector3f direction)
     {
-        Vector3f selfHalfPosition = getPosition().div(2.0f);
-        Vector3f selfMin = selfHalfPosition.sub(new Vector3f(size).div(2.0f), new Vector3f());
-        Vector3f selfMax = selfHalfPosition.add(new Vector3f(size).div(2.0f), new Vector3f());
+        Vector3f center = getPosition();
+        Vector3f halfSize = new Vector3f(size).div(2.0f);
+        Vector3f selfMin = center.sub(halfSize, new Vector3f());
+        Vector3f selfMax = center.add(halfSize, new Vector3f());
 
         return Collider.rayIntersectGeneric(selfMin, selfMax, origin, direction);
     }
@@ -71,7 +34,7 @@ public class BoxCollider extends Collider
     @Override
     public @NotNull Vector3f getSize()
     {
-        return size;
+        return new Vector3f(size);
     }
 
     public static @NotNull BoxCollider create(@NotNull Vector3f size)

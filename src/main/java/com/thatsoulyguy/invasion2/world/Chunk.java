@@ -3,19 +3,19 @@ package com.thatsoulyguy.invasion2.world;
 import com.thatsoulyguy.invasion2.annotation.CustomConstructor;
 import com.thatsoulyguy.invasion2.block.Block;
 import com.thatsoulyguy.invasion2.block.BlockRegistry;
+import com.thatsoulyguy.invasion2.collider.colliders.VoxelMeshCollider;
 import com.thatsoulyguy.invasion2.render.Mesh;
 import com.thatsoulyguy.invasion2.render.Vertex;
 import com.thatsoulyguy.invasion2.system.Component;
 import com.thatsoulyguy.invasion2.thread.MainThreadExecutor;
+import com.thatsoulyguy.invasion2.util.ChunkAlgorithms;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector2f;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 @CustomConstructor("create")
 public class Chunk extends Component
@@ -35,7 +35,7 @@ public class Chunk extends Component
         vertices = new ArrayList<>();
         indices = new ArrayList<>();
 
-        List<Vector3f> voxelPositions = new ArrayList<>();
+        List<Vector3f> renderingVoxelPositions = new ArrayList<>();
 
         for (int x = 0; x < SIZE; x++)
         {
@@ -56,77 +56,13 @@ public class Chunk extends Component
 
                     Block block = Objects.requireNonNull(BlockRegistry.get(blocks[x][y][z]));
 
-                    if (shouldRenderFace(new Vector3i(x, y, z + 1)))
-                    {
-                        addFace(
-                                new Vector3i(x, y, z),
-                                new Vector3i(0, 0, 1),
-                                block.getColors()[2],
-                                textureAtlas.getSubTextureCoordinates(block.getTextures()[2], 180)
-                        );
-                        addVoxelPosition(voxelPositions, x, y, z);
-                    }
-
-                    if (shouldRenderFace(new Vector3i(x, y, z - 1)))
-                    {
-                        addFace(
-                                new Vector3i(x, y, z),
-                                new Vector3i(0, 0, -1),
-                                block.getColors()[3],
-                                textureAtlas.getSubTextureCoordinates(block.getTextures()[3], 180)
-                        );
-                        addVoxelPosition(voxelPositions, x, y, z);
-                    }
-
-                    if (shouldRenderFace(new Vector3i(x, y + 1, z)))
-                    {
-                        addFace(
-                                new Vector3i(x, y, z),
-                                new Vector3i(0, 1, 0),
-                                block.getColors()[0],
-                                textureAtlas.getSubTextureCoordinates(block.getTextures()[0])
-                        );
-                        addVoxelPosition(voxelPositions, x, y, z);
-                    }
-
-                    if (shouldRenderFace(new Vector3i(x, y - 1, z)))
-                    {
-                        addFace(
-                                new Vector3i(x, y, z),
-                                new Vector3i(0, -1, 0),
-                                block.getColors()[1],
-                                textureAtlas.getSubTextureCoordinates(block.getTextures()[1])
-                        );
-                        addVoxelPosition(voxelPositions, x, y, z);
-                    }
-
-                    if (shouldRenderFace(new Vector3i(x + 1, y, z)))
-                    {
-                        addFace(
-                                new Vector3i(x, y, z),
-                                new Vector3i(1, 0, 0),
-                                block.getColors()[4],
-                                textureAtlas.getSubTextureCoordinates(block.getTextures()[4], -90)
-                        );
-                        addVoxelPosition(voxelPositions, x, y, z);
-                    }
-
-                    if (shouldRenderFace(new Vector3i(x - 1, y, z)))
-                    {
-                        addFace(
-                                new Vector3i(x, y, z),
-                                new Vector3i(-1, 0, 0),
-                                block.getColors()[5],
-                                textureAtlas.getSubTextureCoordinates(block.getTextures()[5], 90)
-                        );
-                        addVoxelPosition(voxelPositions, x, y, z);
-                    }
+                    renderFaceIfNeeded(x, y, z, textureAtlas, block, renderingVoxelPositions);
                 }
             }
         }
 
         Mesh mesh = getGameObject().getComponent(Mesh.class);
-        //VoxelMeshCollider collider = getGameObject().getComponent(VoxelMeshCollider.class);
+        VoxelMeshCollider collider = getGameObject().getComponent(VoxelMeshCollider.class);
 
         if (mesh == null)
         {
@@ -134,16 +70,14 @@ public class Chunk extends Component
             return;
         }
 
-        /*
         if (collider == null)
         {
             System.err.println("VoxelMeshCollider component missing from GameObject: '" + getGameObject().getName() + "'!");
             return;
         }
-         */
 
         mesh.setTransient(true);
-        //collider.setTransient(true);
+        collider.setTransient(true);
 
         if (!vertices.isEmpty() && !indices.isEmpty())
         {
@@ -153,13 +87,88 @@ public class Chunk extends Component
                 mesh.setIndices(indices);
             });
 
-            mesh.onLoad();
+            collider.setVoxels(renderingVoxelPositions);
 
-            //collider.setVoxels(voxelPositions);
+            mesh.onLoad();
         }
     }
 
-    private void addVoxelPosition(@NotNull List<Vector3f> voxelPositions, int x, int y, int z)
+    private void renderFaceIfNeeded(int x, int y, int z, TextureAtlas textureAtlas, Block block, List<Vector3f> renderingVoxelPositions)
+    {
+        if (shouldRenderFace(new Vector3i(x, y, z + 1)))
+        {
+            addFace(
+                    new Vector3i(x, y, z),
+                    new Vector3i(0, 0, 1),
+                    block.getColors()[2],
+                    textureAtlas.getSubTextureCoordinates(block.getTextures()[2], 180)
+            );
+
+            addRenderingVoxelPosition(renderingVoxelPositions, x, y, z);
+        }
+
+        if (shouldRenderFace(new Vector3i(x, y, z - 1)))
+        {
+            addFace(
+                    new Vector3i(x, y, z),
+                    new Vector3i(0, 0, -1),
+                    block.getColors()[3],
+                    textureAtlas.getSubTextureCoordinates(block.getTextures()[3], 180)
+            );
+
+            addRenderingVoxelPosition(renderingVoxelPositions, x, y, z);
+        }
+
+        if (shouldRenderFace(new Vector3i(x, y + 1, z)))
+        {
+            addFace(
+                    new Vector3i(x, y, z),
+                    new Vector3i(0, 1, 0),
+                    block.getColors()[0],
+                    textureAtlas.getSubTextureCoordinates(block.getTextures()[0])
+            );
+
+            addRenderingVoxelPosition(renderingVoxelPositions, x, y, z);
+        }
+
+        if (shouldRenderFace(new Vector3i(x, y - 1, z)))
+        {
+            addFace(
+                    new Vector3i(x, y, z),
+                    new Vector3i(0, -1, 0),
+                    block.getColors()[1],
+                    textureAtlas.getSubTextureCoordinates(block.getTextures()[1])
+            );
+
+            addRenderingVoxelPosition(renderingVoxelPositions, x, y, z);
+        }
+
+        if (shouldRenderFace(new Vector3i(x + 1, y, z)))
+        {
+            addFace(
+                    new Vector3i(x, y, z),
+                    new Vector3i(1, 0, 0),
+                    block.getColors()[4],
+                    textureAtlas.getSubTextureCoordinates(block.getTextures()[4], -90)
+            );
+
+            addRenderingVoxelPosition(renderingVoxelPositions, x, y, z);
+        }
+
+        if (shouldRenderFace(new Vector3i(x - 1, y, z)))
+        {
+            addFace(
+                    new Vector3i(x, y, z),
+                    new Vector3i(-1, 0, 0),
+                    block.getColors()[5],
+                    textureAtlas.getSubTextureCoordinates(block.getTextures()[5], 90)
+            );
+
+            addRenderingVoxelPosition(renderingVoxelPositions, x, y, z);
+        }
+    }
+
+    private void addRenderingVoxelPosition(@NotNull List<Vector3f> voxelPositions, int x, int y, int z)
     {
         Vector3f position = new Vector3f(x + 0.5f, y + 0.5f, z + 0.5f);
 
@@ -167,11 +176,17 @@ public class Chunk extends Component
             voxelPositions.add(position);
     }
 
+    /**
+     * Sets the block at the given position to 'type' and updates the chunk mesh.
+     * If you "break" a block (set it to air), this will remove its faces.
+     * If you place a new block, it'll add its faces.
+     *
+     * @param blockPosition The (x, y, z) position in chunk space
+     * @param type The block ID to place
+     */
     public void setBlock(@NotNull Vector3i blockPosition, short type)
     {
-        if (blockPosition.x < 0 || blockPosition.x >= SIZE ||
-                blockPosition.y < 0 || blockPosition.y >= SIZE ||
-                blockPosition.z < 0 || blockPosition.z >= SIZE)
+        if (blockPosition.x < 0 || blockPosition.x >= SIZE || blockPosition.y < 0 || blockPosition.y >= SIZE || blockPosition.z < 0 || blockPosition.z >= SIZE)
             return;
 
         if (blocks[blockPosition.x][blockPosition.y][blockPosition.z] == type)
@@ -179,7 +194,7 @@ public class Chunk extends Component
 
         blocks[blockPosition.x][blockPosition.y][blockPosition.z] = type;
 
-        onLoad();
+        rebuildMeshAndCollider();
     }
 
     private boolean shouldRenderFace(@NotNull Vector3i position)
@@ -192,20 +207,96 @@ public class Chunk extends Component
         return blocks[position.x][position.y][position.z] == BlockRegistry.BLOCK_AIR.getID();
     }
 
+    private void rebuildMeshAndCollider()
+    {
+        vertices.clear();
+        indices.clear();
+
+        List<Vector3f> renderingVoxelPositions = new ArrayList<>();
+
+        TextureAtlas textureAtlas = getGameObject().getComponent(TextureAtlas.class);
+        if (textureAtlas == null)
+        {
+            System.err.println("Texture atlas was not found on chunk object!");
+            return;
+        }
+
+        for (int x = 0; x < SIZE; x++)
+        {
+            for (int y = 0; y < SIZE; y++)
+            {
+                for (int z = 0; z < SIZE; z++)
+                {
+                    short blockID = blocks[x][y][z];
+
+                    if (blockID == BlockRegistry.BLOCK_AIR.getID())
+                        continue;
+
+                    Block block = Objects.requireNonNull(BlockRegistry.get(blockID));
+                    renderFaceIfNeeded(x, y, z, textureAtlas, block, renderingVoxelPositions);
+                }
+            }
+        }
+
+        Mesh mesh = getGameObject().getComponent(Mesh.class);
+        VoxelMeshCollider collider = getGameObject().getComponent(VoxelMeshCollider.class);
+
+        if (mesh == null)
+        {
+            System.err.println("Mesh component missing from GameObject: '" + getGameObject().getName() + "'!");
+            return;
+        }
+
+        if (collider == null)
+        {
+            System.err.println("VoxelMeshCollider component missing from GameObject: '" + getGameObject().getName() + "'!");
+            return;
+        }
+
+        if (!vertices.isEmpty() && !indices.isEmpty())
+        {
+            mesh.setTransient(true);
+            collider.setTransient(true);
+
+            MainThreadExecutor.submit(() -> mesh.modify(
+                    vertList ->
+                    {
+                        vertList.clear();
+                        vertList.addAll(vertices);
+                    },
+                    idxList ->
+                    {
+                        idxList.clear();
+                        idxList.addAll(indices);
+                    }
+            ));
+
+            collider.setVoxels(renderingVoxelPositions);
+        }
+        else
+        {
+            MainThreadExecutor.submit(() -> mesh.modify
+            (
+                    List::clear,
+                    List::clear
+            ));
+
+            collider.setVoxels(Collections.emptyList());
+        }
+    }
+
     private void addFace(@NotNull Vector3i position, @NotNull Vector3i normal, @NotNull Vector3f baseColor, @Nullable Vector2f[] uvs)
     {
         if (uvs == null)
             return;
 
-        float[] ao = getTemporaryAmbientOcclusionSubstituteLighting(normal);
-
-        //TODO: Fix ambient occlusion
+        float[] lighting = ChunkAlgorithms.getAmbientOcclusionLighting(position, normal, blocks);
 
         Vector3i[] faceVertices = getFaceVerticesForNormal(position, normal);
 
         for (int i = 0; i < 4; i++)
         {
-            Vector3f aoColor = new Vector3f(baseColor).mul(ao[i]);
+            Vector3f aoColor = new Vector3f(baseColor).mul(lighting[i]);
             vertices.add(Vertex.create(new Vector3f(faceVertices[i]), aoColor, new Vector3f(normal.x, normal.y, normal.z), uvs[i]));
         }
 
@@ -234,7 +325,7 @@ public class Chunk extends Component
         }
     }
 
-    private static float[] getTemporaryAmbientOcclusionSubstituteLighting(@NotNull Vector3i normal)
+    private static float[] getAmbientOcclusionSubstituteLighting(@NotNull Vector3i normal)
     {
         float[] ao;
 
@@ -272,117 +363,6 @@ public class Chunk extends Component
             };
 
         return ao;
-    }
-
-    private float[] calculateAmbientOcclusion(@NotNull Vector3i position, @NotNull Vector3i normal)
-    {
-        float[] ao = new float[4];
-
-        Vector3i u = new Vector3i();
-        Vector3i v = new Vector3i();
-
-        if (normal.x != 0)
-        {
-            u.set(0,1,0);
-            v.set(0,0,1);
-        }
-        else if (normal.y != 0)
-        {
-            u.set(1,0,0);
-            v.set(0,0,1);
-        }
-        else if (normal.z != 0)
-        {
-            u.set(1,0,0);
-            v.set(0,1,0);
-        }
-
-        boolean positiveNormal = (normal.x > 0 || normal.y > 0 || normal.z > 0);
-
-        for (int i = 0; i < 4; i++)
-        {
-            int vertexRole = positiveNormal ? i : i ^ 1;
-
-            Vector3i side1Off = new Vector3i();
-            Vector3i side2Off = new Vector3i();
-            Vector3i cornerOff = new Vector3i();
-
-            switch (vertexRole)
-            {
-                case 0:
-                    side1Off.set(-u.x, -u.y, -u.z);
-                    side2Off.set(-v.x, -v.y, -v.z);
-                    cornerOff.set(-u.x - v.x, -u.y - v.y, -u.z - v.z);
-                    break;
-                case 1:
-                    side1Off.set(-u.x, -u.y ,-u.z);
-                    side2Off.set(v.x, v.y, v.z);
-                    cornerOff.set(-u.x + v.x, -u.y + v.y, -u.z + v.z);
-                    break;
-                case 2:
-                    side1Off.set(u.x, u.y, u.z);
-                    side2Off.set(v.x, v.y, v.z);
-                    cornerOff.set(u.x + v.x, u.y + v.y, u.z + v.z);
-                    break;
-                case 3:
-                    side1Off.set(u.x, u.y, u.z);
-                    side2Off.set(-v.x, -v.y, -v.z);
-                    cornerOff.set(u.x - v.x, u.y - v.y, u.z - v.z);
-                    break;
-            }
-
-            boolean side1 = isBlockSolid(positionAdd(position, side1Off));
-            boolean side2 = isBlockSolid(positionAdd(position, side2Off));
-            boolean corner = isBlockSolid(positionAdd(position, cornerOff));
-
-            ao[i] = ambientOcclusionFormula(side1, side2, corner, normal);
-        }
-
-        return ao;
-    }
-
-    private float ambientOcclusionFormula(boolean side1, boolean side2, boolean corner, @NotNull Vector3i normal)
-    {
-        int s1 = side1 ? 1 : 0;
-        int s2 = side2 ? 1 : 0;
-        int c = corner ? 1 : 0;
-        int count = s1 + s2 + c;
-
-        if (normal.y > 0)
-        {
-            if (count == 0)
-                return 1.0f;
-
-            if (side1 && side2)
-                return 0.6f;
-
-            return 0.85f;
-        }
-
-        if (side1 && side2)
-            return 0.5f;
-
-        return switch (count)
-        {
-            case 1 -> 0.8f;
-            case 2 -> 0.6f;
-            default -> 1.0f;
-        };
-    }
-
-    private boolean isBlockSolid(@NotNull Vector3i position)
-    {
-        if (position.x < 0 || position.x >= SIZE ||
-                position.y < 0 || position.y >= SIZE ||
-                position.z < 0 || position.z >= SIZE)
-            return true;
-
-        return blocks[position.x][position.y][position.z] != BlockRegistry.BLOCK_AIR.getID();
-    }
-
-    private Vector3i positionAdd(@NotNull Vector3i base, @NotNull Vector3i off)
-    {
-        return new Vector3i(base.x + off.x, base.y + off.y, base.z + off.z);
     }
 
     private @NotNull Vector3i[] getFaceVerticesForNormal(@NotNull Vector3i position, @NotNull Vector3i normal)

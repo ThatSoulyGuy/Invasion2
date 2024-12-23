@@ -21,11 +21,20 @@ public class ColliderManager
 
     public static void register(@NotNull Collider object)
     {
+        object.setIsRegistered(true);
         colliderMap.putIfAbsent(object.getGameObject(), object);
     }
 
     public static void unregister(@NotNull GameObject object)
     {
+        if (!colliderMap.containsKey(object))
+        {
+            System.err.println("Collider map does not contain key: '" + object.getName() + "'!");
+            return;
+        }
+
+        colliderMap.get(object).setIsRegistered(false);
+
         colliderMap.remove(object);
     }
 

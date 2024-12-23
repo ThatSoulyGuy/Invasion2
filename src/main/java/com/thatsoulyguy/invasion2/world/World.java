@@ -2,13 +2,13 @@ package com.thatsoulyguy.invasion2.world;
 
 import com.thatsoulyguy.invasion2.annotation.CustomConstructor;
 import com.thatsoulyguy.invasion2.annotation.EffectivelyNotNull;
+import com.thatsoulyguy.invasion2.collider.colliders.VoxelMeshCollider;
 import com.thatsoulyguy.invasion2.math.Transform;
 import com.thatsoulyguy.invasion2.render.Mesh;
 import com.thatsoulyguy.invasion2.render.ShaderManager;
 import com.thatsoulyguy.invasion2.system.Component;
 import com.thatsoulyguy.invasion2.system.GameObject;
 import com.thatsoulyguy.invasion2.system.GameObjectManager;
-import com.thatsoulyguy.invasion2.system.LevelManager;
 import com.thatsoulyguy.invasion2.util.CoordinateHelper;
 import com.thatsoulyguy.invasion2.util.SerializableObject;
 import org.jetbrains.annotations.NotNull;
@@ -69,7 +69,7 @@ public class World extends Component
 
         object.getTransform().setLocalPosition(CoordinateHelper.chunkToWorldCoordinates(chunkPosition));
 
-        //object.addComponent(VoxelMeshCollider.create());
+        object.addComponent(VoxelMeshCollider.create());
 
         object.addComponent(Objects.requireNonNull(ShaderManager.get("default")));
         object.addComponent(Objects.requireNonNull(TextureAtlasManager.get("blocks")));

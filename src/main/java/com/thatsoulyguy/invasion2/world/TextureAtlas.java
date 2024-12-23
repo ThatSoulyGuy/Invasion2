@@ -85,7 +85,16 @@ public class TextureAtlas extends Component implements ManagerLinkedClass
             }
 
             int atlasSize = (int)Math.ceil(Math.sqrt(totalArea));
-            images.sort((a, b) -> Integer.compare(b.paddedWidth, a.paddedHeight));
+
+            images.sort((a, b) ->
+            {
+                int heightCompare = Integer.compare(b.paddedHeight, a.paddedHeight);
+
+                if (heightCompare != 0)
+                    return heightCompare;
+
+                return Integer.compare(b.paddedWidth, a.paddedWidth);
+            });
 
             ByteBuffer atlasBuffer = createAtlasBuffer(images, atlasSize);
 
@@ -125,10 +134,18 @@ public class TextureAtlas extends Component implements ManagerLinkedClass
 
     public @Nullable Vector2f[] getSubTextureCoordinates(@NotNull String name, float rotation)
     {
-        Vector2f[] uvs = subTextureMap.getOrDefault(name, null);
+        Vector2f[] originalUVs = subTextureMap.get(name);
 
-        if (uvs == null || rotation == 0.0f)
-            return uvs;
+        if (originalUVs == null)
+            return null;
+
+        if (rotation == 0.0f)
+            return Arrays.copyOf(originalUVs, originalUVs.length);
+
+        Vector2f[] uvs = new Vector2f[originalUVs.length];
+
+        for (int i = 0; i < originalUVs.length; i++)
+            uvs[i] = new Vector2f(originalUVs[i].x, originalUVs[i].y);
 
         float padding = 0.02f;
 
@@ -137,10 +154,17 @@ public class TextureAtlas extends Component implements ManagerLinkedClass
 
         for (Vector2f uv : uvs)
         {
-            if (uv.x < minX) minX = uv.x;
-            if (uv.y < minY) minY = uv.y;
-            if (uv.x > maxX) maxX = uv.x;
-            if (uv.y > maxY) maxY = uv.y;
+            if (uv.x < minX)
+                minX = uv.x;
+
+            if (uv.y < minY)
+                minY = uv.y;
+
+            if (uv.x > maxX)
+                maxX = uv.x;
+
+            if (uv.y > maxY)
+                maxY = uv.y;
         }
 
         for (int i = 0; i < uvs.length; i++)
@@ -187,9 +211,14 @@ public class TextureAtlas extends Component implements ManagerLinkedClass
             rotatedUVs[i] = new Vector2f(centerX + rx, centerY + ry);
         }
 
+        for (Vector2f rotatedUV : rotatedUVs)
+        {
+            rotatedUV.x = Math.min(Math.max(rotatedUV.x, 0.0f), 1.0f);
+            rotatedUV.y = Math.min(Math.max(rotatedUV.y, 0.0f), 1.0f);
+        }
+
         return rotatedUVs;
     }
-
 
     public @NotNull AssetPath getLocalDirectory()
     {
