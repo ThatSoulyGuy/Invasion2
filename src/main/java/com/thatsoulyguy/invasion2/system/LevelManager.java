@@ -1,6 +1,8 @@
 package com.thatsoulyguy.invasion2.system;
 
 import com.thatsoulyguy.invasion2.annotation.Static;
+import com.thatsoulyguy.invasion2.core.Time;
+import com.thatsoulyguy.invasion2.ui.UIManager;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -61,6 +63,8 @@ public class LevelManager
 
         System.out.println("Saving level '" + name + "'...");
 
+        UIManager.serialize(path);
+
         File gameObjectsDirectory = new File(path, "gameObject/");
 
         if (!gameObjectsDirectory.exists())
@@ -115,6 +119,8 @@ public class LevelManager
             return;
         }
 
+        UIManager.deserialize(path);
+
         File saveFile = new File(path, "level.bin");
 
         System.out.println("Loading level '" + saveDirectory.toPath().getName(saveDirectory.toPath().getNameCount() - 1) + "'...");
@@ -152,6 +158,8 @@ public class LevelManager
         {
             System.err.println("Failed to deserialize level! " + exception.getMessage());
         }
+
+        Time.reset();
     }
 
     public static boolean deleteLevel(@NotNull String name, @NotNull String path)

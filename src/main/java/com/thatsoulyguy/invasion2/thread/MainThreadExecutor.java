@@ -1,5 +1,6 @@
 package com.thatsoulyguy.invasion2.thread;
 
+import com.thatsoulyguy.invasion2.annotation.EffectivelyNotNull;
 import com.thatsoulyguy.invasion2.annotation.Static;
 import org.jetbrains.annotations.NotNull;
 
@@ -11,8 +12,8 @@ import java.util.concurrent.FutureTask;
 @Static
 public class MainThreadExecutor
 {
-    private static final ConcurrentLinkedQueue<FutureTask<Void>> taskQueue = new ConcurrentLinkedQueue<>();
-    private static Thread mainThread;
+    private static final @NotNull ConcurrentLinkedQueue<FutureTask<Void>> taskQueue = new ConcurrentLinkedQueue<>();
+    private static @EffectivelyNotNull Thread mainThread;
 
     private MainThreadExecutor() { }
 

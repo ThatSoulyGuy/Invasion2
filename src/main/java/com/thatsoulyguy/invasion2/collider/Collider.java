@@ -16,25 +16,37 @@ public abstract class Collider extends Component
 {
     private static final float EPSILON = 1e-6f;
 
-    private boolean isRegistered = false;
+    private boolean isCollidable = true;
+
+    protected Collider() { }
 
     @Override
     public void initialize()
     {
-        ColliderManager.register(this);
+        if (isCollidable)
+            ColliderManager.register(this);
     }
 
     @Override
     public void uninitialize()
     {
-        ColliderManager.unregister(getGameObject());
+        if (ColliderManager.has(getGameObject()))
+            ColliderManager.unregister(getGameObject());
     }
 
-    @Override
-    public void onLoad()
+    public boolean isCollidable()
     {
-        if (isRegistered)
+        return isCollidable;
+    }
+
+    public void setCollidable(boolean collidable)
+    {
+        if (collidable && !ColliderManager.has(getGameObject()))
             ColliderManager.register(this);
+        else if (!collidable && ColliderManager.has(getGameObject()))
+            ColliderManager.unregister(getGameObject());
+
+        isCollidable = collidable;
     }
 
     public abstract @Nullable Vector3f rayIntersect(@NotNull Vector3f origin, @NotNull Vector3f direction);
@@ -60,7 +72,7 @@ public abstract class Collider extends Component
      * <p>
      * "On top" is defined as:
      * - The AABBs overlap on the X and Z axes.
-     * - One AABB is entirely above or below the other along the Y axis.
+     * - AABB 'a' is entirely above the other along the Y axis.
      *
      * @param aMin The minimum (x, y, z) coordinates of Box A.
      * @param aMax The maximum (x, y, z) coordinates of Box A.
@@ -78,10 +90,7 @@ public abstract class Collider extends Component
 
         final float EPSILON = 1e-3f;
 
-        boolean aOnTopOfB = aMin.y >= bMax.y - EPSILON && aMin.y <= bMax.y + EPSILON;
-        boolean bOnTopOfA = bMin.y >= aMax.y - EPSILON && bMin.y <= aMax.y + EPSILON;
-
-        return aOnTopOfB || bOnTopOfA;
+        return aMin.y >= bMax.y - EPSILON && aMin.y <= bMax.y + EPSILON;
     }
 
     /**
@@ -109,11 +118,6 @@ public abstract class Collider extends Component
     public @NotNull Vector3f resolve(@NotNull Collider other, boolean selfIsMovable)
     {
         return CollisionHandlerManager.resolve(this, other, selfIsMovable);
-    }
-
-    public void setIsRegistered(boolean isRegistered)
-    {
-        this.isRegistered = isRegistered;
     }
 
     /**
@@ -178,80 +182,38 @@ public abstract class Collider extends Component
         return mtv;
     }
 
-    public static Vector3f resolveAxisCollisions(BoxCollider box, VoxelMeshCollider voxelMesh, String axis, int maxIterations)
+    public static Vector3f resolveAllCollisions(BoxCollider box, VoxelMeshCollider voxelMesh)
     {
-        Vector3f totalResolution = new Vector3f();
+        Vector3f boxPos = box.getPosition();
+        Vector3f boxSize = box.getSize();
 
-        for (int iteration = 0; iteration < maxIterations; iteration++)
+        Vector3f boxMin = new Vector3f(boxPos).sub(new Vector3f(boxSize).mul(0.5f));
+        Vector3f boxMax = new Vector3f(boxPos).add(new Vector3f(boxSize).mul(0.5f));
+
+        //DebugRenderer.addBox(boxMin, boxMax, new Vector3f(1.0f, 0.0f, 0.0f));
+
+        Vector3f cumulativeResolution = new Vector3f();
+
+        for (Vector3f voxel : voxelMesh.getVoxels())
         {
-            Vector3f boxPos = box.getPosition();
-            Vector3f boxSize = box.getSize();
+            Vector3f voxelWorldPos = new Vector3f(voxelMesh.getPosition()).add(voxel);
 
-            Vector3f boxMin = new Vector3f(boxPos).sub(new Vector3f(boxSize).mul(0.5f));
-            Vector3f boxMax = new Vector3f(boxPos).add(new Vector3f(boxSize).mul(0.5f));
+            Vector3f voxelMin = new Vector3f(voxelWorldPos).sub(0.5f, 0.5f, 0.5f);
+            Vector3f voxelMax = new Vector3f(voxelWorldPos).add(0.5f, 0.5f, 0.5f);
 
-            Vector3f meshCenter = voxelMesh.getCenteredPosition();
-            Vector3f meshSize = voxelMesh.getSize();
+            //DebugRenderer.addBox(voxelMin, voxelMax, new Vector3f(1.0f, 0.0f, 0.0f));
 
-            Vector3f meshMin = new Vector3f(meshCenter).sub(new Vector3f(meshSize).mul(0.5f));
-            Vector3f meshMax = new Vector3f(meshCenter).add(new Vector3f(meshSize).mul(0.5f));
-
-            if (!Collider.intersectsGeneric(boxMin, boxMax, meshMin, meshMax))
-                break;
-
-            Vector3f smallestResolution = null;
-            float smallestOverlap = Float.MAX_VALUE;
-
-            for (Vector3f voxel : voxelMesh.getVoxels())
+            if (Collider.intersectsGeneric(boxMin, boxMax, voxelMin, voxelMax))
             {
-                Vector3f voxelWorldPos = new Vector3f(voxelMesh.getPosition()).add(voxel);
+                Vector3f resolution = Collider.resolveGeneric(boxMin, boxMax, voxelMin, voxelMax);
 
-                Vector3f voxelMin = new Vector3f(voxelWorldPos).sub(0.5f, 0.5f, 0.5f);
-                Vector3f voxelMax = new Vector3f(voxelWorldPos).add(0.5f, 0.5f, 0.5f);
-
-                if (Collider.intersectsGeneric(boxMin, boxMax, voxelMin, voxelMax))
-                {
-                    Vector3f resolution = Collider.resolveGeneric(boxMin, boxMax, voxelMin, voxelMax);
-
-                    if (resolution != null)
-                    {
-                        float axisOverlap = 0f;
-
-                        switch (axis)
-                        {
-                            case "x" -> axisOverlap = Math.abs(resolution.x);
-                            case "y" -> axisOverlap = Math.abs(resolution.y);
-                            case "z" -> axisOverlap = Math.abs(resolution.z);
-                        }
-
-                        if (axisOverlap != 0f && axisOverlap < smallestOverlap)
-                        {
-                            smallestOverlap = axisOverlap;
-                            smallestResolution = resolution;
-                        }
-                    }
-                }
+                if (resolution != null)
+                    cumulativeResolution.add(resolution);
             }
-
-            if (smallestResolution != null)
-            {
-                Vector3f push = switch (axis)
-                {
-                    case "x" -> new Vector3f(smallestResolution.x, 0, 0);
-                    case "y" -> new Vector3f(0, smallestResolution.y, 0);
-                    case "z" -> new Vector3f(0, 0, smallestResolution.z);
-                    case null, default -> new Vector3f();
-                };
-
-                box.getGameObject().getTransform().translate(push);
-                totalResolution.add(push);
-
-            }
-            else
-                break;
         }
 
-        return totalResolution;
+        box.getGameObject().getTransform().translate(cumulativeResolution);
+        return cumulativeResolution;
     }
 
     /**
@@ -293,5 +255,19 @@ public abstract class Collider extends Component
             return null;
 
         return new Vector3f(origin).add(new Vector3f(direction).mul(t));
+    }
+
+    public static <T extends Collider> @NotNull T create(Class<T> clazz)
+    {
+        try
+        {
+            return clazz.getDeclaredConstructor().newInstance();
+        }
+        catch (Exception e)
+        {
+            System.err.println("Missing constructor from Collider! This shouldn't happen!");
+
+            return clazz.cast(new Object());
+        }
     }
 }

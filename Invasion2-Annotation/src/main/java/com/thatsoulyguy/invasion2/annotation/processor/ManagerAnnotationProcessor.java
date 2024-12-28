@@ -67,11 +67,20 @@ public class ManagerAnnotationProcessor extends AbstractProcessor
                 );
             }
 
+            if (!validateMethod(classElement, "has", "any", true, false, "boolean", true, false))
+            {
+                processingEnv.getMessager().printMessage(
+                        Diagnostic.Kind.ERROR,
+                        "Method has must have one @NotNull parameter of type any and must return a @NotNull value of type boolean.",
+                        classElement
+                );
+            }
+
             if (!validateMethod(classElement, "get", "any", true, false, managedClass, true, true))
             {
                 processingEnv.getMessager().printMessage(
                         Diagnostic.Kind.ERROR,
-                        "Method get must have one @NotNull parameter of type String and must return a @NotNull value of type " + managedClass + ".",
+                        "Method get must have one @NotNull parameter of type any and must return a @NotNull value of type " + managedClass + ".",
                         classElement
                 );
             }

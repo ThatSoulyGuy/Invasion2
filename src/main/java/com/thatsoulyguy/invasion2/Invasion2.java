@@ -16,26 +16,36 @@ import com.thatsoulyguy.invasion2.math.Rigidbody;
 import com.thatsoulyguy.invasion2.render.*;
 import com.thatsoulyguy.invasion2.system.GameObject;
 import com.thatsoulyguy.invasion2.system.GameObjectManager;
+import com.thatsoulyguy.invasion2.system.Layer;
 import com.thatsoulyguy.invasion2.system.LevelManager;
 import com.thatsoulyguy.invasion2.thread.MainThreadExecutor;
+import com.thatsoulyguy.invasion2.ui.UIElement;
+import com.thatsoulyguy.invasion2.ui.UIManager;
+import com.thatsoulyguy.invasion2.ui.UIPanel;
 import com.thatsoulyguy.invasion2.util.AssetPath;
 import com.thatsoulyguy.invasion2.util.FileHelper;
+import com.thatsoulyguy.invasion2.world.TerrainGenerator;
 import com.thatsoulyguy.invasion2.world.TextureAtlas;
 import com.thatsoulyguy.invasion2.world.TextureAtlasManager;
 import com.thatsoulyguy.invasion2.world.World;
+import com.thatsoulyguy.invasion2.world.terraingenerators.CaveTerrainGenerator;
+import com.thatsoulyguy.invasion2.world.terraingenerators.GroundTerrainGenerator;
+import com.thatsoulyguy.invasion2.world.terraingenerators.TreeTerrainGenerator;
+import org.joml.Vector2f;
 import org.joml.Vector2i;
 import org.joml.Vector3f;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWVidMode;
 
+import javax.swing.*;
+import java.util.Arrays;
 import java.util.Objects;
-import java.util.concurrent.Callable;
-import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class Invasion2
 {
     private @EffectivelyNotNull GameObject player;
-    private @EffectivelyNotNull GameObject world;
+    private @EffectivelyNotNull GameObject overworld;
 
     public void preInitialize()
     {
@@ -61,12 +71,14 @@ public class Invasion2
 
         MainThreadExecutor.initialize();
 
-        Window.initialize("Invasion 2* (1.29.7)", windowSize);
+        Window.initialize("Invasion 2* (1.32.8)", windowSize);
 
         DebugRenderer.initialize();
 
         ShaderManager.register(Shader.create("default", AssetPath.create("invasion2", "shader/default")));
+        ShaderManager.register(Shader.create("ui", AssetPath.create("invasion2", "shader/ui")));
         TextureManager.register(Texture.create("debug", Texture.Filter.NEAREST, Texture.Wrapping.REPEAT, AssetPath.create("invasion2", "texture/debug.png")));
+        TextureManager.register(Texture.create("white", Texture.Filter.NEAREST, Texture.Wrapping.REPEAT, AssetPath.create("invasion2", "texture/white.png")));
         TextureAtlasManager.register(TextureAtlas.create("blocks", AssetPath.create("invasion2", "texture/block/")));
 
         BlockRegistry.initialize();
@@ -75,27 +87,44 @@ public class Invasion2
 
         InputManager.update();
 
+        UIManager.initialize();
+
         Time.reset();
     }
 
     public void initialize()
     {
-        //LevelManager.loadLevel(FileHelper.getPersistentDataPath("Invasion2") + "/overworld", true);
+         LevelManager.loadLevel(FileHelper.getPersistentDataPath("Invasion2") + "/overworld", true);
 
-        ///*
+        /*
         LevelManager.createLevel("overworld", true);
 
-        player = GameObject.create("player");
+        UIPanel panel = UIPanel.create("testPanel");
+
+        UIElement uiElement = panel.addElement(UIElement.create("test", new Vector2f(0, 0), new Vector2f(100, 100)));
+
+        uiElement.setTexture(Objects.requireNonNull(TextureManager.get("debug")));
+
+        uiElement.setOffset(new Vector2f(0.0f, -10.0f));
+        uiElement.setAlignment(UIElement.Alignment.BOTTOM);
+
+        player = GameObject.create("default.player", Layer.DEFAULT);
 
         player.getTransform().setLocalPosition(new Vector3f(0.0f, 180.0f, 0.0f));
 
-        player.addComponent(BoxCollider.create(new Vector3f(0.65f, 1.89f, 0.65f)));
+        player.addComponent(Collider.create(BoxCollider.class).setSize(new Vector3f(0.65f, 1.89f, 0.65f)));
         player.addComponent(Rigidbody.create());
         player.addComponent(Entity.create(EntityPlayer.class));
 
-        world = GameObject.create("world");
+        overworld = GameObject.create("default.world", Layer.DEFAULT);
 
-        world.addComponent(World.create("overworld"));
+        overworld.addComponent(World.create("overworld"));
+
+        World world = overworld.getComponentNotNull(World.class);
+
+        world.addTerrainGenerator(TerrainGenerator.create(GroundTerrainGenerator.class));
+        world.addTerrainGenerator(TerrainGenerator.create(CaveTerrainGenerator.class));
+        world.addTerrainGenerator(TerrainGenerator.create(TreeTerrainGenerator.class));
         //*/
     }
 
@@ -103,8 +132,9 @@ public class Invasion2
     {
         Time.update();
 
-        World.getLocalWorld().chunkLoader = Objects.requireNonNull(GameObjectManager.get("player")).getTransform();
+        World.getLocalWorld().chunkLoader = Objects.requireNonNull(GameObjectManager.get("default.player")).getTransform();
 
+        UIManager.update();
         GameObjectManager.update();
 
         MainThreadExecutor.execute();
@@ -116,8 +146,8 @@ public class Invasion2
     {
         Window.preRender();
 
-        GameObjectManager.render(Objects.requireNonNull(GameObjectManager.get("player")).getComponentNotNull(EntityPlayer.class).getCamera());
-        DebugRenderer.render(Objects.requireNonNull(GameObjectManager.get("player")).getComponentNotNull(EntityPlayer.class).getCamera());
+        GameObjectManager.render(Objects.requireNonNull(GameObjectManager.get("default.player")).getComponentNotNull(EntityPlayer.class).getCamera());
+        DebugRenderer.render(Objects.requireNonNull(GameObjectManager.get("default.player")).getComponentNotNull(EntityPlayer.class).getCamera());
 
         Window.postRender();
     }
@@ -175,14 +205,15 @@ public class Invasion2
 
             final int MAX_ITERATIONS = 10;
 
-            Vector3f resolutionX = Collider.resolveAxisCollisions(box, voxelMesh, "x", MAX_ITERATIONS);
-            totalResolution.add(resolutionX);
+            for (int iteration = 0; iteration < MAX_ITERATIONS; iteration++)
+            {
+                Vector3f resolution = Collider.resolveAllCollisions(box, voxelMesh);
 
-            Vector3f resolutionY = Collider.resolveAxisCollisions(box, voxelMesh, "y", MAX_ITERATIONS);
-            totalResolution.add(resolutionY);
+                if (resolution.length() < 0.00001f)
+                    break;
 
-            Vector3f resolutionZ = Collider.resolveAxisCollisions(box, voxelMesh, "z", MAX_ITERATIONS);
-            totalResolution.add(resolutionZ);
+                totalResolution.add(resolution);
+            }
 
             boolean collided = totalResolution.length() > 0.00001f;
 
@@ -269,17 +300,35 @@ public class Invasion2
 
     public static void main(String[] args)
     {
-        Invasion2 instantiation = new Invasion2();
-
-        instantiation.preInitialize();
-        instantiation.initialize();
-
-        while (!Window.shouldClose())
+        try
         {
-            instantiation.update();
-            instantiation.render();
-        }
+            Invasion2 instantiation = new Invasion2();
 
-        instantiation.uninitialize();
+            instantiation.preInitialize();
+            instantiation.initialize();
+
+            while (!Window.shouldClose())
+            {
+                instantiation.update();
+                instantiation.render();
+            }
+
+            instantiation.uninitialize();
+        }
+        catch (Exception exception)
+        {
+            String stackTrace = Arrays.stream(exception.getStackTrace())
+                    .map(StackTraceElement::toString)
+                    .collect(Collectors.joining("\n"));
+
+            JOptionPane.showMessageDialog(
+                    null,
+                    exception.getMessage() + "\n\n" + stackTrace,
+                    "Exception!",
+                    JOptionPane.ERROR_MESSAGE
+            );
+
+            System.exit(-1);
+        }
     }
 }

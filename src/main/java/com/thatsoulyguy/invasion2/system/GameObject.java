@@ -1,6 +1,5 @@
 package com.thatsoulyguy.invasion2.system;
 
-import com.thatsoulyguy.invasion2.annotation.CustomConstructor;
 import com.thatsoulyguy.invasion2.annotation.EffectivelyNotNull;
 import com.thatsoulyguy.invasion2.math.Transform;
 import com.thatsoulyguy.invasion2.render.Camera;
@@ -21,6 +20,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 public class GameObject implements Serializable
 {
     private @EffectivelyNotNull String name;
+    private @NotNull Layer layer = Layer.UNKNOWN;
     private final @NotNull ConcurrentMap<Class<? extends Component>, Component> componentMap = new ConcurrentHashMap<>();
 
     private @Nullable transient GameObject parent;
@@ -30,20 +30,44 @@ public class GameObject implements Serializable
 
     private final @NotNull ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
+    private boolean isTransient = false;
     private boolean isActive = true;
 
     private GameObject() { }
 
-    public <T extends Component> void addComponent(@NotNull T component)
+    public <T extends Component> T addComponent(@NotNull T component)
+    {
+        return addComponent(component, true);
+    }
+
+    public <T extends Component> T addComponent(@NotNull T component, boolean initialize)
+    {
+        component.setGameObject(this);
+
+        if (initialize)
+            component.initialize();
+
+        componentMap.putIfAbsent(component.getClass(), component);
+
+        return component;
+    }
+
+    public <T extends Component> void setComponent(@NotNull T component)
     {
         component.setGameObject(this);
         component.initialize();
-        componentMap.putIfAbsent(component.getClass(), component);
+
+        componentMap.put(component.getClass(), component);
     }
 
     public @Nullable <T extends Component> T getComponent(@NotNull Class<T> clazz)
     {
         return clazz.cast(componentMap.get(clazz));
+    }
+
+    public @NotNull List<Component> getComponents()
+    {
+        return List.copyOf(componentMap.values());
     }
 
     public @NotNull <T extends Component> T getComponentNotNull(@NotNull Class<T> clazz)
@@ -99,7 +123,8 @@ public class GameObject implements Serializable
         if (isAncestor(child))
             throw new IllegalArgumentException("Cannot add ancestor as child to prevent circular reference.");
 
-        GameObjectManager.unregister(child.getName());
+        if (GameObjectManager.has(child.getName()))
+            GameObjectManager.unregister(child.getName());
 
         children.put(child.name, child);
         child.setParent(this);
@@ -125,6 +150,21 @@ public class GameObject implements Serializable
         return Collections.unmodifiableCollection(children.values());
     }
 
+    public boolean isTransient()
+    {
+        return isTransient;
+    }
+
+    public void setTransient(boolean isTransient)
+    {
+        this.isTransient = isTransient;
+    }
+
+    public @NotNull Layer getLayer()
+    {
+        return layer;
+    }
+
     public void update()
     {
         if (!isUpdating.compareAndSet(false, true))
@@ -140,6 +180,7 @@ public class GameObject implements Serializable
             try
             {
                 componentMap.values().forEach(Component::update);
+                children.values().forEach(GameObject::update);
             }
             finally
             {
@@ -165,7 +206,13 @@ public class GameObject implements Serializable
 
         try
         {
-            componentMap.values().forEach((component) -> component.render(camera));
+            switch (layer)
+            {
+                case DEFAULT -> componentMap.values().forEach((component) -> component.renderDefault(camera));
+                case UI -> componentMap.values().forEach(Component::renderUI);
+            }
+
+            children.values().forEach(gameObject -> gameObject.render(camera));
         }
         finally
         {
@@ -175,6 +222,14 @@ public class GameObject implements Serializable
 
     public void save(@NotNull File file)
     {
+        save(file, false);
+    }
+
+    public void save(@NotNull File file, boolean ignoreTransient)
+    {
+        if (isTransient && !ignoreTransient)
+            return;
+
         try (FileOutputStream fileOutputStream = new FileOutputStream(file); ObjectOutputStream objectOutputStream = new ObjectOutputStream(fileOutputStream))
         {
             File childrenDirectory = new File(file.getAbsolutePath().replace(".bin", "/"));
@@ -182,6 +237,7 @@ public class GameObject implements Serializable
             objectOutputStream.writeUTF(name);
             objectOutputStream.writeInt(componentMap.size());
             objectOutputStream.writeInt(children.size());
+            objectOutputStream.writeObject(layer);
 
             ExecutorService componentExecutor = Executors.newVirtualThreadPerTaskExecutor();
 
@@ -277,6 +333,10 @@ public class GameObject implements Serializable
                 int componentCount = objectInputStream.readInt();
                 int childrenCount = objectInputStream.readInt();
 
+                result.layer = (Layer) objectInputStream.readObject();
+
+                List<Component> componentsToInitialize = new ArrayList<>();
+
                 for (int i = 0; i < componentCount; i++)
                 {
                     Object object = objectInputStream.readObject();
@@ -302,12 +362,14 @@ public class GameObject implements Serializable
                         {
                             System.out.println("Deserialized component '" + component.getClass().getSimpleName() + "'.");
 
-                            result.addComponent(component);
+                            componentsToInitialize.add(result.addComponent(component, false));
                         }
 
                         case null, default -> System.err.println("Invalid component found during deserialization.");
                     }
                 }
+
+                componentsToInitialize.forEach(Component::initialize);
 
                 System.out.println("Components loaded for game object: " + result.name);
 
@@ -415,11 +477,12 @@ public class GameObject implements Serializable
         }
     }
 
-    public static @NotNull GameObject create(@NotNull String name)
+    public static @NotNull GameObject create(@NotNull String name, @NotNull Layer layer)
     {
         GameObject result = new GameObject();
 
         result.name = name;
+        result.layer = layer;
         result.addComponent(Transform.create(new Vector3f(0.0f), new Vector3f(0.0f), new Vector3f(1.0f)));
 
         GameObjectManager.register(result);

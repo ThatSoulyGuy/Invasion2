@@ -1,6 +1,5 @@
 package com.thatsoulyguy.invasion2.collider.colliders;
 
-import com.thatsoulyguy.invasion2.annotation.CustomConstructor;
 import com.thatsoulyguy.invasion2.collider.Collider;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -9,12 +8,9 @@ import org.joml.Vector3f;
 import java.util.ArrayList;
 import java.util.List;
 
-@CustomConstructor("create")
 public class VoxelMeshCollider extends Collider
 {
     private @NotNull List<Vector3f> voxels = new ArrayList<>();
-
-    private VoxelMeshCollider() { }
 
     @Override
     public @Nullable Vector3f rayIntersect(@NotNull Vector3f origin, @NotNull Vector3f direction)
@@ -82,10 +78,5 @@ public class VoxelMeshCollider extends Collider
     public @NotNull List<Vector3f> getVoxels()
     {
         return new ArrayList<>(voxels);
-    }
-
-    public static @NotNull VoxelMeshCollider create()
-    {
-        return new VoxelMeshCollider();
     }
 }

@@ -197,6 +197,21 @@ public class Chunk extends Component
         rebuildMeshAndCollider();
     }
 
+    /**
+     * Gets the type of the block at the specified position.
+     * Returns -1 if the block is outside the bounds of the chunk
+     *
+     * @param blockPosition The position in block coordinates
+     * @return The type of block retrieved
+     */
+    public short getBlock(@NotNull Vector3i blockPosition)
+    {
+        if (blockPosition.x < 0 || blockPosition.x >= SIZE || blockPosition.y < 0 || blockPosition.y >= SIZE || blockPosition.z < 0 || blockPosition.z >= SIZE)
+            return -1;
+
+        return blocks[blockPosition.x][blockPosition.y][blockPosition.z];
+    }
+
     private boolean shouldRenderFace(@NotNull Vector3i position)
     {
         if (position.x < 0 || position.x >= SIZE ||

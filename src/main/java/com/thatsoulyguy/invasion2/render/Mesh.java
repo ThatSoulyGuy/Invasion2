@@ -1,12 +1,15 @@
 package com.thatsoulyguy.invasion2.render;
 
 import com.thatsoulyguy.invasion2.annotation.CustomConstructor;
+import com.thatsoulyguy.invasion2.core.Window;
 import com.thatsoulyguy.invasion2.system.Component;
 import com.thatsoulyguy.invasion2.thread.MainThreadExecutor;
 import com.thatsoulyguy.invasion2.world.TextureAtlas;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.joml.Matrix4f;
 import org.joml.Vector2f;
+import org.joml.Vector2i;
 import org.joml.Vector3f;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL41;
@@ -46,7 +49,7 @@ public class Mesh extends Component
     }
 
     @Override
-    public void render(@Nullable Camera camera)
+    public void renderDefault(@Nullable Camera camera)
     {
         try
         {
@@ -99,6 +102,71 @@ public class Mesh extends Component
         GL41.glDisableVertexAttribArray(2);
         GL41.glDisableVertexAttribArray(3);
         GL41.glBindVertexArray(0);
+    }
+
+    @Override
+    public void renderUI()
+    {
+        try
+        {
+            if (initializationFuture != null)
+                initializationFuture.get(0, TimeUnit.SECONDS);
+        }
+        catch (TimeoutException | InterruptedException | ExecutionException _)
+        {
+            return;
+        }
+
+        if (initializationFuture == null)
+            return;
+
+        GL41.glDisable(GL41.GL_CULL_FACE);
+
+        Texture texture = getGameObject().getComponent(Texture.class);
+
+        if (texture == null)
+            texture = Objects.requireNonNull(getGameObject().getComponent(TextureAtlas.class)).getOutputTexture();
+
+        Shader shader = getGameObject().getComponent(Shader.class);
+
+        if (texture == null || shader == null)
+        {
+            System.err.println("Shader or Texture component(s) missing from GameObject: '" + getGameObject().getName() + "'!");
+            return;
+        }
+
+        Vector2i windowDimensions = Window.getDimensions();
+        int windowWidth = windowDimensions.x;
+        int windowHeight = windowDimensions.y;
+
+        Matrix4f projectionMatrix = new Matrix4f().ortho(0, windowWidth, windowHeight, 0, -1.0f, 1.0f);
+
+         GL41.glBindVertexArray(vao);
+
+        GL41.glEnableVertexAttribArray(0);
+        GL41.glEnableVertexAttribArray(1);
+        GL41.glEnableVertexAttribArray(2);
+        GL41.glEnableVertexAttribArray(3);
+
+        texture.bind(0);
+        shader.bind();
+
+        shader.setShaderUniform("diffuse", 0);
+        shader.setShaderUniform("projection", projectionMatrix);
+        shader.setShaderUniform("model", getGameObject().getTransform().getModelMatrix());
+
+        GL41.glDrawElements(GL41.GL_TRIANGLES, indices.size(), GL41.GL_UNSIGNED_INT, 0);
+
+        shader.unbind();
+        texture.unbind();
+
+        GL41.glDisableVertexAttribArray(0);
+        GL41.glDisableVertexAttribArray(1);
+        GL41.glDisableVertexAttribArray(2);
+        GL41.glDisableVertexAttribArray(3);
+        GL41.glBindVertexArray(0);
+
+        GL41.glEnable(GL41.GL_CULL_FACE);
     }
 
     /**

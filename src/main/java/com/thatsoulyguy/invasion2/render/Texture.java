@@ -238,11 +238,6 @@ public class Texture extends Component implements ManagerLinkedClass
 
     public static @NotNull Texture create(@NotNull String name, @NotNull Filter filter, @NotNull Wrapping wrapping, @NotNull AssetPath localPath)
     {
-        return create(name, filter, wrapping, localPath, false);
-    }
-
-    public static @NotNull Texture create(@NotNull String name, @NotNull Filter filter, @NotNull Wrapping wrapping, @NotNull AssetPath localPath, boolean immediateLoad)
-    {
         Texture result = new Texture();
 
         result.setName(name);
@@ -251,8 +246,7 @@ public class Texture extends Component implements ManagerLinkedClass
         result.setWrapping(wrapping);
         result.textureId = -1;
 
-        if (immediateLoad)
-            result.onLoad();
+        result.generate();
 
         return result;
     }

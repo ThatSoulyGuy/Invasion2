@@ -2,6 +2,7 @@ package com.thatsoulyguy.invasion2.world;
 
 import com.thatsoulyguy.invasion2.annotation.CustomConstructor;
 import com.thatsoulyguy.invasion2.annotation.EffectivelyNotNull;
+import com.thatsoulyguy.invasion2.collider.Collider;
 import com.thatsoulyguy.invasion2.collider.colliders.VoxelMeshCollider;
 import com.thatsoulyguy.invasion2.math.Transform;
 import com.thatsoulyguy.invasion2.render.Mesh;
@@ -9,6 +10,7 @@ import com.thatsoulyguy.invasion2.render.ShaderManager;
 import com.thatsoulyguy.invasion2.system.Component;
 import com.thatsoulyguy.invasion2.system.GameObject;
 import com.thatsoulyguy.invasion2.system.GameObjectManager;
+import com.thatsoulyguy.invasion2.system.Layer;
 import com.thatsoulyguy.invasion2.util.CoordinateHelper;
 import com.thatsoulyguy.invasion2.util.SerializableObject;
 import org.jetbrains.annotations.NotNull;
@@ -27,6 +29,8 @@ public class World extends Component
 
     public static final byte RENDER_DISTANCE = 3;
 
+    public long seed = 354576879657L;
+
     private @EffectivelyNotNull String name;
 
     public @Nullable Transform chunkLoader;
@@ -35,17 +39,13 @@ public class World extends Component
 
     private final @NotNull Set<Vector3i> generatingChunks = ConcurrentHashMap.newKeySet();
 
-    private final ConcurrentMap<Vector3i, Future<?>> ongoingChunkGenerations = new ConcurrentHashMap<>();
+    private final @NotNull ConcurrentMap<Vector3i, Future<?>> ongoingChunkGenerations = new ConcurrentHashMap<>();
 
-    private final @NotNull TerrainGenerator terrainGenerator = TerrainGenerator.create(
-            0.006,
-            Chunk.SIZE,
-            12345L
-    );
+    private final @NotNull List<TerrainGenerator> terrainGenerators = new ArrayList<>();
 
     private transient @EffectivelyNotNull ExecutorService chunkGenerationExecutor;
 
-    private final SerializableObject chunkLock = new SerializableObject();
+    private final @NotNull SerializableObject chunkLock = new SerializableObject();
 
     private World() { }
 
@@ -65,11 +65,11 @@ public class World extends Component
 
     public @NotNull Chunk generateChunk(@NotNull Vector3i chunkPosition)
     {
-        GameObject object = GameObject.create("chunk_" + chunkPosition.x + "_" + chunkPosition.y + "_" + chunkPosition.z);
+        GameObject object = GameObject.create("default.chunk_" + chunkPosition.x + "_" + chunkPosition.y + "_" + chunkPosition.z, Layer.DEFAULT);
 
         object.getTransform().setLocalPosition(CoordinateHelper.chunkToWorldCoordinates(chunkPosition));
 
-        object.addComponent(VoxelMeshCollider.create());
+        object.addComponent(Collider.create(VoxelMeshCollider.class));
 
         object.addComponent(Objects.requireNonNull(ShaderManager.get("default")));
         object.addComponent(Objects.requireNonNull(TextureAtlasManager.get("blocks")));
@@ -78,7 +78,12 @@ public class World extends Component
 
         short[][][] blocks = new short[Chunk.SIZE][Chunk.SIZE][Chunk.SIZE];
 
-        terrainGenerator.generateBlocks(blocks, chunkPosition);
+        terrainGenerators.forEach(generator ->
+        {
+            generator.setSeed(seed);
+            generator.setScale(0.006d);
+            generator.generateBlocks(blocks, chunkPosition);
+        });
 
         object.addComponent(Chunk.create(blocks));
 
@@ -95,7 +100,7 @@ public class World extends Component
             return;
         }
 
-        GameObjectManager.unregister("chunk_" + chunkPosition.x + "_" + chunkPosition.y + "_" + chunkPosition.z, true);
+        GameObjectManager.unregister("default.chunk_" + chunkPosition.x + "_" + chunkPosition.y + "_" + chunkPosition.z, true);
 
         loadedChunks.remove(chunkPosition);
     }
@@ -111,9 +116,9 @@ public class World extends Component
     }
 
     /**
-     * Sets a block in the world.
+     * Sets the type of a block in the world.
      *
-     * @param worldPosition The block position at which a block is set.
+     * @param worldPosition The world position at which a block is set.
      * @param type The type of the block being set
      */
     public boolean setBlock(@NotNull Vector3f worldPosition, short type)
@@ -130,17 +135,42 @@ public class World extends Component
         }
     }
 
+    /**
+     * Gets the type of block in the world.
+     * Returns -1 if no block is found
+     *
+     * @param worldPosition The position of the block in world coordinates
+     * @return The type of the block
+     */
+    public short getBlock(@NotNull Vector3f worldPosition)
+    {
+        Vector3i blockCoordinates = CoordinateHelper.worldToBlockCoordinates(worldPosition);
+        Vector3i chunkCoordinates = CoordinateHelper.worldToChunkCoordinates(worldPosition);
+
+        if (!loadedChunks.contains(chunkCoordinates))
+            return -1;
+        else
+        {
+            return Objects.requireNonNull(getChunk(chunkCoordinates)).getBlock(blockCoordinates);
+        }
+    }
+
     public @Nullable Chunk getChunk(@NotNull Vector3i chunkPosition)
     {
         if (!loadedChunks.contains(chunkPosition))
             return null;
 
-        return Objects.requireNonNull(GameObjectManager.get("chunk_" + chunkPosition.x + "_" + chunkPosition.y + "_" + chunkPosition.z)).getComponent(Chunk.class);
+        return Objects.requireNonNull(GameObjectManager.get("default.chunk_" + chunkPosition.x + "_" + chunkPosition.y + "_" + chunkPosition.z)).getComponent(Chunk.class);
     }
 
     public static @NotNull World getLocalWorld()
     {
-        return Objects.requireNonNull(Objects.requireNonNull(GameObjectManager.get("world")).getComponent(World.class));
+        return Objects.requireNonNull(Objects.requireNonNull(GameObjectManager.get("default.world")).getComponent(World.class));
+    }
+
+    public void addTerrainGenerator(@NotNull TerrainGenerator generator)
+    {
+        terrainGenerators.add(generator);
     }
 
     public void loadCloseChunks()

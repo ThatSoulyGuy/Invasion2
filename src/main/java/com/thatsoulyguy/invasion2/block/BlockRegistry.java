@@ -31,7 +31,7 @@ public class BlockRegistry
         @Override
         public float getHardness()
         {
-            return 0;
+            return 0.0f;
         }
 
         @Override
@@ -81,7 +81,7 @@ public class BlockRegistry
         @Override
         public float getHardness()
         {
-            return 0.14f;
+            return 0.65f;
         }
 
         @Override
@@ -136,7 +136,7 @@ public class BlockRegistry
         @Override
         public float getHardness()
         {
-            return 0.14f;
+            return 0.65f;
         }
 
         @Override
@@ -191,7 +191,7 @@ public class BlockRegistry
         @Override
         public float getHardness()
         {
-            return 0.14f;
+            return 1.25f;
         }
 
         @Override
@@ -229,6 +229,116 @@ public class BlockRegistry
         }
     };
 
+    public static final Block BLOCK_LEAVES = new Block()
+    {
+        @Override
+        public @NotNull String getDisplayName()
+        {
+            return "block_leaves";
+        }
+
+        @Override
+        public @NotNull String getRegistryName()
+        {
+            return "Leaves";
+        }
+
+        @Override
+        public float getHardness()
+        {
+            return 0.14f;
+        }
+
+        @Override
+        public float getResistance()
+        {
+            return 0.1f;
+        }
+
+        @Override
+        public @NotNull String[] getTextures()
+        {
+            return new String[]
+            {
+                "leaves_oak",
+                "leaves_oak",
+                "leaves_oak",
+                "leaves_oak",
+                "leaves_oak",
+                "leaves_oak"
+            };
+        }
+
+        @Override
+        public @NotNull Vector3f[] getColors()
+        {
+            return new Vector3f[]
+            {
+                new Vector3f(0.27f, 0.68f, 0.18f),
+                new Vector3f(0.27f, 0.68f, 0.18f),
+                new Vector3f(0.27f, 0.68f, 0.18f),
+                new Vector3f(0.27f, 0.68f, 0.18f),
+                new Vector3f(0.27f, 0.68f, 0.18f),
+                new Vector3f(0.27f, 0.68f, 0.18f),
+            };
+        }
+    };
+
+    public static final Block BLOCK_LOG_OAK = new Block()
+    {
+        @Override
+        public @NotNull String getDisplayName()
+        {
+            return "block_log_oak";
+        }
+
+        @Override
+        public @NotNull String getRegistryName()
+        {
+            return "Oak Log";
+        }
+
+        @Override
+        public float getHardness()
+        {
+            return 0.14f;
+        }
+
+        @Override
+        public float getResistance()
+        {
+            return 0.1f;
+        }
+
+        @Override
+        public @NotNull String[] getTextures()
+        {
+            return new String[]
+            {
+                "log_oak_top",
+                "log_oak_top",
+                "log_oak",
+                "log_oak",
+                "log_oak",
+                "log_oak"
+            };
+        }
+
+        @Override
+        public @NotNull Vector3f[] getColors()
+        {
+            return new Vector3f[]
+            {
+                new Vector3f(1.0f),
+                new Vector3f(1.0f),
+                new Vector3f(1.0f),
+                new Vector3f(1.0f),
+                new Vector3f(1.0f),
+                new Vector3f(1.0f),
+            };
+        }
+    };
+
     private static final ConcurrentMap<String, Block> blocksByName = new ConcurrentHashMap<>();
     private static final ConcurrentMap<Short, Block> blocksById = new ConcurrentHashMap<>();
 
@@ -240,6 +350,8 @@ public class BlockRegistry
         register(BLOCK_GRASS);
         register(BLOCK_DIRT);
         register(BLOCK_STONE);
+        register(BLOCK_LEAVES);
+        register(BLOCK_LOG_OAK);
     }
 
     public static void register(@NotNull Block object)

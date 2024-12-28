@@ -180,6 +180,7 @@ public class DebugRenderer //TODO: Restructure this entire disaster
         GL41.glBufferSubData(GL41.GL_ARRAY_BUFFER, 0L, vertexBuffer);
 
         int vertexCount = linesToRender.size() * 2;
+        GL41.glLineWidth(3);
         GL41.glDrawArrays(GL41.GL_LINES, 0, vertexCount);
 
         GL41.glBindBuffer(GL41.GL_ARRAY_BUFFER, 0);

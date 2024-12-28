@@ -1,18 +1,14 @@
 package com.thatsoulyguy.invasion2.collider.colliders;
 
-import com.thatsoulyguy.invasion2.annotation.CustomConstructor;
 import com.thatsoulyguy.invasion2.annotation.EffectivelyNotNull;
 import com.thatsoulyguy.invasion2.collider.Collider;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
 
-@CustomConstructor("create")
 public class BoxCollider extends Collider
 {
     private @EffectivelyNotNull Vector3f size;
-
-    private BoxCollider() { }
 
     @Override
     public @Nullable Vector3f rayIntersect(@NotNull Vector3f origin, @NotNull Vector3f direction)
@@ -31,18 +27,16 @@ public class BoxCollider extends Collider
         return getGameObject().getTransform().getWorldPosition();
     }
 
+    public @NotNull BoxCollider setSize(@NotNull Vector3f size)
+    {
+        this.size = size;
+
+        return this;
+    }
+
     @Override
     public @NotNull Vector3f getSize()
     {
         return new Vector3f(size);
-    }
-
-    public static @NotNull BoxCollider create(@NotNull Vector3f size)
-    {
-        BoxCollider result = new BoxCollider();
-
-        result.size = size;
-
-        return result;
     }
 }

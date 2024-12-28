@@ -21,7 +21,6 @@ public class ColliderManager
 
     public static void register(@NotNull Collider object)
     {
-        object.setIsRegistered(true);
         colliderMap.putIfAbsent(object.getGameObject(), object);
     }
 
@@ -33,9 +32,12 @@ public class ColliderManager
             return;
         }
 
-        colliderMap.get(object).setIsRegistered(false);
-
         colliderMap.remove(object);
+    }
+
+    public static boolean has(@NotNull GameObject object)
+    {
+        return colliderMap.containsKey(object);
     }
 
     public static @Nullable Collider get(@NotNull GameObject object)
