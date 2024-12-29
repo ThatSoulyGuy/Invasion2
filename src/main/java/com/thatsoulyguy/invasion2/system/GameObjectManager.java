@@ -3,11 +3,17 @@ package com.thatsoulyguy.invasion2.system;
 import com.thatsoulyguy.invasion2.annotation.Manager;
 import com.thatsoulyguy.invasion2.annotation.Static;
 import com.thatsoulyguy.invasion2.render.Camera;
+import com.thatsoulyguy.invasion2.render.DebugRenderer;
+import com.thatsoulyguy.invasion2.render.advanced.RenderPassManager;
+import com.thatsoulyguy.invasion2.render.advanced.core.RenderPass;
+import com.thatsoulyguy.invasion2.render.advanced.core.renderpasses.LevelRenderPass;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.lwjgl.opengl.GL41;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -119,10 +125,35 @@ public class GameObjectManager
             traverse(child, list, visited);
     }
 
-    public static void render(@Nullable Camera camera)
+    public static void renderDefault(@Nullable Camera camera)
     {
+        if (RenderPassManager.has(LevelRenderPass.class))
+            Objects.requireNonNull(RenderPassManager.get(LevelRenderPass.class)).render();
+
         for (GameObject gameObject : gameObjectMap.values())
-            gameObject.render(camera);
+        {
+            gameObject.renderDefault(camera);
+            DebugRenderer.render(camera);
+        }
+
+        LevelRenderPass scenePass = (LevelRenderPass) Objects.requireNonNull(RenderPassManager.get(LevelRenderPass.class));
+        scenePass.unbindFBO();
+
+        List<RenderPass> passList = RenderPassManager.getAll().stream()
+                .filter(pass -> !(pass instanceof LevelRenderPass))
+                .toList();
+
+        passList.forEach(RenderPass::render);
+    }
+
+    public static void renderUI()
+    {
+        GL41.glDisable(GL41.GL_DEPTH_TEST);
+
+        for (GameObject gameObject : gameObjectMap.values())
+            gameObject.renderUI();
+
+        GL41.glEnable(GL41.GL_DEPTH_TEST);
     }
 
     public static boolean has(@NotNull String name)

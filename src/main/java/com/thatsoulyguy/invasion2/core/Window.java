@@ -10,11 +10,15 @@ import org.lwjgl.opengl.GL41;
 import org.lwjgl.system.MemoryStack;
 
 import java.nio.IntBuffer;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 @Static
 public class Window
 {
+    private static final @NotNull List<Runnable> onResizeCompleted = new ArrayList<>();
+
     private static long handle;
 
     private Window() { }
@@ -34,7 +38,12 @@ public class Window
 
         GLFW.glfwMakeContextCurrent(handle);
 
-        GLFW.glfwSetFramebufferSizeCallback(handle, (_, width, height) -> GL41.glViewport(0, 0, width, height));
+        GLFW.glfwSetFramebufferSizeCallback(handle, (_, width, height) ->
+        {
+            GL41.glViewport(0, 0, width, height);
+            onResizeCompleted.forEach(Runnable::run);
+        });
+
         GLFW.glfwSetKeyCallback(handle, InputManager.getKeyCallback());
         GLFW.glfwSetMouseButtonCallback(handle, InputManager.getMouseButtonCallback());
         GLFW.glfwSetCursorPosCallback(handle, InputManager.getMousePositionCallback());
@@ -67,6 +76,11 @@ public class Window
     public static boolean shouldClose()
     {
         return GLFW.glfwWindowShouldClose(handle);
+    }
+
+    public static void addOnResizeCompletedCallback(@NotNull Runnable runnable)
+    {
+        onResizeCompleted.add(runnable);
     }
 
     public static void setTitle(@NotNull String title)

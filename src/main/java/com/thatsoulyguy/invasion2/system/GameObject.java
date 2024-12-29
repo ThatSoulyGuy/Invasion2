@@ -197,7 +197,7 @@ public class GameObject implements Serializable
         }
     }
 
-    public void render(@Nullable Camera camera)
+    public void renderDefault(@Nullable Camera camera)
     {
         if (!isActive)
             return;
@@ -206,13 +206,30 @@ public class GameObject implements Serializable
 
         try
         {
-            switch (layer)
-            {
-                case DEFAULT -> componentMap.values().forEach((component) -> component.renderDefault(camera));
-                case UI -> componentMap.values().forEach(Component::renderUI);
-            }
+            if (layer == Layer.DEFAULT)
+                componentMap.values().forEach((component) -> component.renderDefault(camera));
 
-            children.values().forEach(gameObject -> gameObject.render(camera));
+            children.values().forEach(gameObject -> gameObject.renderDefault(camera));
+        }
+        finally
+        {
+            lock.readLock().unlock();
+        }
+    }
+
+    public void renderUI()
+    {
+        if (!isActive)
+            return;
+
+        lock.readLock().lock();
+
+        try
+        {
+            if (layer == Layer.UI)
+                componentMap.values().forEach(Component::renderUI);
+
+            children.values().forEach(GameObject::renderUI);
         }
         finally
         {

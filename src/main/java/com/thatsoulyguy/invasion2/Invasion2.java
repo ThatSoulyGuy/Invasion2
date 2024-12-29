@@ -14,6 +14,9 @@ import com.thatsoulyguy.invasion2.entity.entities.EntityPlayer;
 import com.thatsoulyguy.invasion2.input.InputManager;
 import com.thatsoulyguy.invasion2.math.Rigidbody;
 import com.thatsoulyguy.invasion2.render.*;
+import com.thatsoulyguy.invasion2.render.advanced.RenderPassManager;
+import com.thatsoulyguy.invasion2.render.advanced.core.renderpasses.LevelRenderPass;
+import com.thatsoulyguy.invasion2.render.advanced.core.renderpasses.PassthroughRenderPass;
 import com.thatsoulyguy.invasion2.system.GameObject;
 import com.thatsoulyguy.invasion2.system.GameObjectManager;
 import com.thatsoulyguy.invasion2.system.Layer;
@@ -77,9 +80,19 @@ public class Invasion2
 
         ShaderManager.register(Shader.create("default", AssetPath.create("invasion2", "shader/default")));
         ShaderManager.register(Shader.create("ui", AssetPath.create("invasion2", "shader/ui")));
+        ShaderManager.register(Shader.create("pass.passthrough", AssetPath.create("invasion2", "shader/pass/passthrough")));
+
         TextureManager.register(Texture.create("debug", Texture.Filter.NEAREST, Texture.Wrapping.REPEAT, AssetPath.create("invasion2", "texture/debug.png")));
         TextureManager.register(Texture.create("white", Texture.Filter.NEAREST, Texture.Wrapping.REPEAT, AssetPath.create("invasion2", "texture/white.png")));
+
         TextureAtlasManager.register(TextureAtlas.create("blocks", AssetPath.create("invasion2", "texture/block/")));
+
+        LevelRenderPass levelRenderPass = new LevelRenderPass();
+
+        RenderPassManager.register(levelRenderPass);
+        RenderPassManager.register(new PassthroughRenderPass(levelRenderPass));
+
+        RenderPassManager.initialize();
 
         BlockRegistry.initialize();
 
@@ -94,9 +107,9 @@ public class Invasion2
 
     public void initialize()
     {
-         LevelManager.loadLevel(FileHelper.getPersistentDataPath("Invasion2") + "/overworld", true);
+        //LevelManager.loadLevel(FileHelper.getPersistentDataPath("Invasion2") + "/overworld", true);
 
-        /*
+        //*
         LevelManager.createLevel("overworld", true);
 
         UIPanel panel = UIPanel.create("testPanel");
@@ -146,8 +159,9 @@ public class Invasion2
     {
         Window.preRender();
 
-        GameObjectManager.render(Objects.requireNonNull(GameObjectManager.get("default.player")).getComponentNotNull(EntityPlayer.class).getCamera());
-        DebugRenderer.render(Objects.requireNonNull(GameObjectManager.get("default.player")).getComponentNotNull(EntityPlayer.class).getCamera());
+        GameObjectManager.renderDefault(Objects.requireNonNull(GameObjectManager.get("default.player")).getComponentNotNull(EntityPlayer.class).getCamera());
+
+        GameObjectManager.renderUI();
 
         Window.postRender();
     }
@@ -287,6 +301,8 @@ public class Invasion2
         LevelManager.saveLevel("overworld", FileHelper.getPersistentDataPath("Invasion2"));
 
         GameObjectManager.uninitialize();
+
+        RenderPassManager.uninitialize();
 
         InputManager.uninitialize();
 

@@ -305,15 +305,10 @@ public class Chunk extends Component
         if (uvs == null)
             return;
 
-        float[] lighting = ChunkAlgorithms.getAmbientOcclusionLighting(position, normal, blocks);
-
         Vector3i[] faceVertices = getFaceVerticesForNormal(position, normal);
 
         for (int i = 0; i < 4; i++)
-        {
-            Vector3f aoColor = new Vector3f(baseColor).mul(lighting[i]);
-            vertices.add(Vertex.create(new Vector3f(faceVertices[i]), aoColor, new Vector3f(normal.x, normal.y, normal.z), uvs[i]));
-        }
+            vertices.add(Vertex.create(new Vector3f(faceVertices[i]), baseColor, new Vector3f(normal.x, normal.y, normal.z), uvs[i]));
 
         int startIndex = this.vertices.size() - 4;
 

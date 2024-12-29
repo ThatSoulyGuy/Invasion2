@@ -166,14 +166,18 @@ public class DebugRenderer //TODO: Restructure this entire disaster
 
         FloatBuffer vertexBuffer = BufferUtils.createFloatBuffer(requiredBufferSize);
 
-        for (Line line : linesToRender.keySet())
+        try
         {
-            vertexBuffer.put(line.start.x).put(line.start.y).put(line.start.z);
-            vertexBuffer.put(line.color.x).put(line.color.y).put(line.color.z);
+            for (Line line : linesToRender.keySet())
+            {
+                vertexBuffer.put(line.start.x).put(line.start.y).put(line.start.z);
+                vertexBuffer.put(line.color.x).put(line.color.y).put(line.color.z);
 
-            vertexBuffer.put(line.end.x).put(line.end.y).put(line.end.z);
-            vertexBuffer.put(line.color.x).put(line.color.y).put(line.color.z);
+                vertexBuffer.put(line.end.x).put(line.end.y).put(line.end.z);
+                vertexBuffer.put(line.color.x).put(line.color.y).put(line.color.z);
+            }
         }
+        catch (Exception _) { } //TODO: Avoid this
 
         vertexBuffer.flip();
 
