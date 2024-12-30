@@ -27,6 +27,11 @@ public class TextureManager
         registeredTextures.remove(name);
     }
 
+    public static boolean has(@NotNull String name)
+    {
+        return registeredTextures.containsKey(name);
+    }
+
     public static @Nullable Texture get(@NotNull String name)
     {
         return registeredTextures.getOrDefault(name, null);

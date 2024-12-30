@@ -7,6 +7,7 @@ import com.thatsoulyguy.invasion2.collider.colliders.BoxCollider;
 import com.thatsoulyguy.invasion2.collider.colliders.VoxelMeshCollider;
 import com.thatsoulyguy.invasion2.collider.handler.CollisionHandlerManager;
 import com.thatsoulyguy.invasion2.collider.handler.CollisionResult;
+import com.thatsoulyguy.invasion2.core.Settings;
 import com.thatsoulyguy.invasion2.core.Time;
 import com.thatsoulyguy.invasion2.core.Window;
 import com.thatsoulyguy.invasion2.entity.Entity;
@@ -15,8 +16,12 @@ import com.thatsoulyguy.invasion2.input.InputManager;
 import com.thatsoulyguy.invasion2.math.Rigidbody;
 import com.thatsoulyguy.invasion2.render.*;
 import com.thatsoulyguy.invasion2.render.advanced.RenderPassManager;
+import com.thatsoulyguy.invasion2.render.advanced.core.renderpasses.GeometryRenderPass;
 import com.thatsoulyguy.invasion2.render.advanced.core.renderpasses.LevelRenderPass;
 import com.thatsoulyguy.invasion2.render.advanced.core.renderpasses.PassthroughRenderPass;
+import com.thatsoulyguy.invasion2.render.advanced.ssao.renderpasses.SSAOBlurRenderPass;
+import com.thatsoulyguy.invasion2.render.advanced.ssao.renderpasses.SSAOConcludingRenderPass;
+import com.thatsoulyguy.invasion2.render.advanced.ssao.renderpasses.SSAORenderPass;
 import com.thatsoulyguy.invasion2.system.GameObject;
 import com.thatsoulyguy.invasion2.system.GameObjectManager;
 import com.thatsoulyguy.invasion2.system.Layer;
@@ -25,6 +30,7 @@ import com.thatsoulyguy.invasion2.thread.MainThreadExecutor;
 import com.thatsoulyguy.invasion2.ui.UIElement;
 import com.thatsoulyguy.invasion2.ui.UIManager;
 import com.thatsoulyguy.invasion2.ui.UIPanel;
+import com.thatsoulyguy.invasion2.ui.uielements.ImageUIElement;
 import com.thatsoulyguy.invasion2.util.AssetPath;
 import com.thatsoulyguy.invasion2.util.FileHelper;
 import com.thatsoulyguy.invasion2.world.TerrainGenerator;
@@ -74,25 +80,65 @@ public class Invasion2
 
         MainThreadExecutor.initialize();
 
-        Window.initialize("Invasion 2* (1.32.8)", windowSize);
+        Window.initialize("Invasion 2* (1.33.9)", windowSize);
 
         DebugRenderer.initialize();
 
-        ShaderManager.register(Shader.create("default", AssetPath.create("invasion2", "shader/default")));
+        ShaderManager.register(Shader.create("legacy.default", AssetPath.create("invasion2", "shader/legacy/default")));
         ShaderManager.register(Shader.create("ui", AssetPath.create("invasion2", "shader/ui")));
         ShaderManager.register(Shader.create("pass.passthrough", AssetPath.create("invasion2", "shader/pass/passthrough")));
+        ShaderManager.register(Shader.create("pass.geometry", AssetPath.create("invasion2", "shader/pass/geometry")));
+        ShaderManager.register(Shader.create("ssao.default", AssetPath.create("invasion2", "shader/ssao/default")));
+        ShaderManager.register(Shader.create("ssao.blur", AssetPath.create("invasion2", "shader/ssao/blur")));
+        ShaderManager.register(Shader.create("ssao.conclusion", AssetPath.create("invasion2", "shader/ssao/conclusion")));
 
         TextureManager.register(Texture.create("debug", Texture.Filter.NEAREST, Texture.Wrapping.REPEAT, AssetPath.create("invasion2", "texture/debug.png")));
         TextureManager.register(Texture.create("white", Texture.Filter.NEAREST, Texture.Wrapping.REPEAT, AssetPath.create("invasion2", "texture/white.png")));
 
         TextureAtlasManager.register(TextureAtlas.create("blocks", AssetPath.create("invasion2", "texture/block/")));
 
+
         LevelRenderPass levelRenderPass = new LevelRenderPass();
 
-        RenderPassManager.register(levelRenderPass);
-        RenderPassManager.register(new PassthroughRenderPass(levelRenderPass));
+        levelRenderPass.initialize();
 
-        RenderPassManager.initialize();
+        RenderPassManager.register(levelRenderPass);
+
+        GeometryRenderPass geometryPass = new GeometryRenderPass();
+        geometryPass.initialize();
+
+        RenderPassManager.register(geometryPass);
+
+
+        SSAORenderPass ssaoPass = new SSAORenderPass(
+                geometryPass.getPositionTex(),
+                geometryPass.getNormalTex()
+        );
+
+        ssaoPass.initialize();
+
+
+        SSAOBlurRenderPass ssaoBlurPass = new SSAOBlurRenderPass(ssaoPass.getSSAOColor());
+
+        ssaoBlurPass.initialize();
+
+
+        SSAOConcludingRenderPass concludingPass = new SSAOConcludingRenderPass(
+                geometryPass.getPositionTex(),
+                geometryPass.getNormalTex(),
+                geometryPass.getAlbedoTex(),
+                ssaoBlurPass.getBlurredSSAO()
+        );
+
+        concludingPass.initialize();
+
+
+        RenderPassManager.register(concludingPass);
+        RenderPassManager.register(ssaoBlurPass);
+        RenderPassManager.register(ssaoPass);
+
+
+        Settings.initialize();
 
         BlockRegistry.initialize();
 
@@ -114,7 +160,7 @@ public class Invasion2
 
         UIPanel panel = UIPanel.create("testPanel");
 
-        UIElement uiElement = panel.addElement(UIElement.create("test", new Vector2f(0, 0), new Vector2f(100, 100)));
+        UIElement uiElement = panel.addElement(UIElement.create(ImageUIElement.class, "test", new Vector2f(0, 0), new Vector2f(100, 100)));
 
         uiElement.setTexture(Objects.requireNonNull(TextureManager.get("debug")));
 

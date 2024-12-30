@@ -1,6 +1,7 @@
 package com.thatsoulyguy.invasion2.render;
 
 import com.thatsoulyguy.invasion2.annotation.CustomConstructor;
+import com.thatsoulyguy.invasion2.core.Settings;
 import com.thatsoulyguy.invasion2.core.Window;
 import com.thatsoulyguy.invasion2.system.Component;
 import com.thatsoulyguy.invasion2.thread.MainThreadExecutor;
@@ -69,13 +70,7 @@ public class Mesh extends Component
         if (texture == null)
             texture = Objects.requireNonNull(getGameObject().getComponent(TextureAtlas.class)).getOutputTexture();
 
-        Shader shader = getGameObject().getComponent(Shader.class);
-
-        if (texture == null || shader == null)
-        {
-            System.err.println("Shader or Texture component(s) missing from GameObject: '" + getGameObject().getName() + "'!");
-            return;
-        }
+        Shader shader = Settings.DEFAULT_RENDERING_SHADER.getValue();
 
         GL41.glBindVertexArray(vao);
 
@@ -84,10 +79,12 @@ public class Mesh extends Component
         GL41.glEnableVertexAttribArray(2);
         GL41.glEnableVertexAttribArray(3);
 
+        assert texture != null;
+
         texture.bind(0);
         shader.bind();
 
-        shader.setShaderUniform("diffuse", 0);
+        shader.setShaderUniform("diffuseTexture", 0);
         shader.setShaderUniform("projection", camera.getProjectionMatrix());
         shader.setShaderUniform("view", camera.getViewMatrix());
         shader.setShaderUniform("model", getGameObject().getTransform().getModelMatrix());

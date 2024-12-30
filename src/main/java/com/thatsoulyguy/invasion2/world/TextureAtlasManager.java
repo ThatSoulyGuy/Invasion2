@@ -27,6 +27,11 @@ public class TextureAtlasManager
         textureAtlasMap.remove(name);
     }
 
+    public static boolean has(@NotNull String name)
+    {
+        return textureAtlasMap.containsKey(name);
+    }
+
     public static @Nullable TextureAtlas get(@NotNull String name)
     {
         if (!textureAtlasMap.containsKey(name))

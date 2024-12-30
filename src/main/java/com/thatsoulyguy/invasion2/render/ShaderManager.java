@@ -27,6 +27,11 @@ public class ShaderManager
         registeredShaders.remove(name);
     }
 
+    public static boolean has(@NotNull String name)
+    {
+        return registeredShaders.containsKey(name);
+    }
+
     public static @Nullable Shader get(@NotNull String name)
     {
         return registeredShaders.getOrDefault(name, null);

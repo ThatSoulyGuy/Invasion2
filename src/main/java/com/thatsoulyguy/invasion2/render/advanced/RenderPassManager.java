@@ -2,6 +2,7 @@ package com.thatsoulyguy.invasion2.render.advanced;
 
 import com.thatsoulyguy.invasion2.annotation.Manager;
 import com.thatsoulyguy.invasion2.annotation.Static;
+import com.thatsoulyguy.invasion2.render.Camera;
 import com.thatsoulyguy.invasion2.render.advanced.core.RenderPass;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -18,11 +19,6 @@ public class RenderPassManager
 
     private RenderPassManager() { }
 
-    public static void initialize()
-    {
-        renderPassMap.values().forEach(RenderPass::initialize);
-    }
-
     public static void register(@NotNull RenderPass object)
     {
         renderPassMap.putIfAbsent(object.getClass(), object);
@@ -33,9 +29,9 @@ public class RenderPassManager
         renderPassMap.remove(clazz);
     }
 
-    public static void render()
+    public static void render(@Nullable Camera camera)
     {
-        renderPassMap.values().forEach(RenderPass::render);
+        renderPassMap.values().forEach(pass -> pass.render(camera));
     }
 
     public static boolean has(@NotNull Class<? extends RenderPass> clazz)

@@ -14,12 +14,10 @@ import org.joml.Vector3f;
 
 import java.io.Serializable;
 import java.util.List;
-import java.util.Objects;
 
-@CustomConstructor("create")
-public class UIElement implements Serializable
+public abstract class UIElement implements Serializable
 {
-    private static final @NotNull List<Vertex> DEFAULT_VERTICES = List.of(new Vertex[]
+    public static final @NotNull List<Vertex> DEFAULT_VERTICES = List.of(new Vertex[]
     {
         Vertex.create(new Vector3f(0.0f, 0.0f, 0.0f), new Vector3f(1.0f), new Vector3f(0.0f), new Vector2f(0.0f, 0.0f)),
         Vertex.create(new Vector3f(1.0f, 0.0f, 0.0f), new Vector3f(1.0f), new Vector3f(0.0f), new Vector2f(1.0f, 0.0f)),
@@ -27,13 +25,13 @@ public class UIElement implements Serializable
         Vertex.create(new Vector3f(0.0f, 1.0f, 0.0f), new Vector3f(1.0f), new Vector3f(0.0f), new Vector2f(0.0f, 1.0f)),
     });
 
-    private static final @NotNull List<Integer> DEFAULT_INDICES = List.of(new Integer[]
+    public static final @NotNull List<Integer> DEFAULT_INDICES = List.of(new Integer[]
     {
         0, 1, 2,
         2, 3, 0
     });
 
-    private @EffectivelyNotNull String name;
+    @EffectivelyNotNull String name;
 
     transient @EffectivelyNotNull GameObject object;
 
@@ -46,7 +44,9 @@ public class UIElement implements Serializable
 
     private long frameCounter = 0;
 
-    private UIElement() { }
+    protected UIElement() { }
+
+    public abstract void generate(@NotNull GameObject object);
 
     public void update()
     {
@@ -188,9 +188,20 @@ public class UIElement implements Serializable
         object.getTransform().setLocalScale(new Vector3f(dimensions.x, dimensions.y, 0.0f));
     }
 
-    public static @NotNull UIElement create(@NotNull String name, @NotNull Vector2f position, @NotNull Vector2f dimensions)
+    public static <T extends UIElement> @NotNull T create(@NotNull Class<T> clazz, @NotNull String name, @NotNull Vector2f position, @NotNull Vector2f dimensions)
     {
-        UIElement result = new UIElement();
+        T result;
+
+        try
+        {
+            result = clazz.getDeclaredConstructor().newInstance();
+        }
+        catch (Exception e)
+        {
+            System.err.println("Missing constructor from UIElement! This shouldn't happen!");
+
+            return clazz.cast(new Object());
+        }
 
         result.name = name;
 
@@ -199,14 +210,7 @@ public class UIElement implements Serializable
         result.object.getTransform().setLocalPosition(new Vector3f(position.x, position.y, 0.0f));
         result.object.getTransform().setLocalScale(new Vector3f(dimensions.x, dimensions.y, 1.0f));
 
-        result.object.addComponent(Objects.requireNonNull(ShaderManager.get("ui")));
-        result.object.addComponent(Objects.requireNonNull(TextureManager.get("white")));
-
-        result.object.addComponent(Mesh.create(DEFAULT_VERTICES, DEFAULT_INDICES));
-
-        result.object.getComponentNotNull(Mesh.class).onLoad();
-
-        result.object.setTransient(true);
+        result.generate(result.object);
 
         return result;
     }

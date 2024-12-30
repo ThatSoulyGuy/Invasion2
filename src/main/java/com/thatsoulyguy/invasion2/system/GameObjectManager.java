@@ -2,10 +2,12 @@ package com.thatsoulyguy.invasion2.system;
 
 import com.thatsoulyguy.invasion2.annotation.Manager;
 import com.thatsoulyguy.invasion2.annotation.Static;
+import com.thatsoulyguy.invasion2.core.Settings;
 import com.thatsoulyguy.invasion2.render.Camera;
 import com.thatsoulyguy.invasion2.render.DebugRenderer;
 import com.thatsoulyguy.invasion2.render.advanced.RenderPassManager;
 import com.thatsoulyguy.invasion2.render.advanced.core.RenderPass;
+import com.thatsoulyguy.invasion2.render.advanced.core.renderpasses.GeometryRenderPass;
 import com.thatsoulyguy.invasion2.render.advanced.core.renderpasses.LevelRenderPass;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -23,7 +25,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class GameObjectManager
 {
     private static final @NotNull ConcurrentMap<String, GameObject> gameObjectMap = new ConcurrentHashMap<>();
-    private static final @NotNull ExecutorService executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+    private static final @NotNull ExecutorService executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() / 2);
     private static final @NotNull BlockingQueue<GameObject> uninitializeQueue = new LinkedBlockingQueue<>();
     private static final @NotNull AtomicBoolean isUpdating = new AtomicBoolean(false);
 
@@ -127,23 +129,33 @@ public class GameObjectManager
 
     public static void renderDefault(@Nullable Camera camera)
     {
-        if (RenderPassManager.has(LevelRenderPass.class))
-            Objects.requireNonNull(RenderPassManager.get(LevelRenderPass.class)).render();
-
-        for (GameObject gameObject : gameObjectMap.values())
+        if (Settings.USE_ADVANCED_RENDERING_FEATURES.getValue())
         {
-            gameObject.renderDefault(camera);
+            GeometryRenderPass geometryRenderPass = null;
+
+            if (RenderPassManager.has(GeometryRenderPass.class))
+                geometryRenderPass = (GeometryRenderPass) Objects.requireNonNull(RenderPassManager.get(GeometryRenderPass.class));
+
+            if (geometryRenderPass != null)
+                geometryRenderPass.render(camera);
+
+            for (GameObject gameObject : gameObjectMap.values())
+                gameObject.renderDefault(camera);
+
+            if (geometryRenderPass != null)
+                geometryRenderPass.endRender();
+
+            List<RenderPass> passList = RenderPassManager.getAll().stream()
+                    .filter(pass -> !(pass instanceof LevelRenderPass))
+                    .filter(pass -> !(pass instanceof GeometryRenderPass))
+                    .toList();
+
+            passList.forEach(pass -> pass.render(camera));
+
             DebugRenderer.render(camera);
         }
-
-        LevelRenderPass scenePass = (LevelRenderPass) Objects.requireNonNull(RenderPassManager.get(LevelRenderPass.class));
-        scenePass.unbindFBO();
-
-        List<RenderPass> passList = RenderPassManager.getAll().stream()
-                .filter(pass -> !(pass instanceof LevelRenderPass))
-                .toList();
-
-        passList.forEach(RenderPass::render);
+        else
+            gameObjectMap.values().forEach(gameObject -> gameObject.renderDefault(camera));
     }
 
     public static void renderUI()

@@ -1,9 +1,12 @@
 package com.thatsoulyguy.invasion2.render.advanced.core.renderpasses;
 
+import com.thatsoulyguy.invasion2.render.Camera;
 import com.thatsoulyguy.invasion2.render.Shader;
 import com.thatsoulyguy.invasion2.render.ShaderManager;
+import com.thatsoulyguy.invasion2.render.advanced.core.Framebuffer;
 import com.thatsoulyguy.invasion2.render.advanced.core.RenderPass;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL41;
 
@@ -64,8 +67,11 @@ public class PassthroughRenderPass implements RenderPass
     }
 
     @Override
-    public void render()
+    public void render(@Nullable Camera camera)
     {
+        if (camera == null)
+            return;
+
         Shader shader = Objects.requireNonNull(ShaderManager.get("pass.passthrough"));
 
         GL41.glBindFramebuffer(GL41.GL_FRAMEBUFFER, 0);
@@ -82,9 +88,7 @@ public class PassthroughRenderPass implements RenderPass
 
         shader.setShaderUniform("sceneTexture", 0);
 
-        GL41.glBindVertexArray(quadVAO);
-        GL41.glDrawElements(GL41.GL_TRIANGLES, 6, GL41.GL_UNSIGNED_INT, 0);
-        GL41.glBindVertexArray(0);
+        Framebuffer.renderFullscreenQuadrilateral();
 
         GL41.glBindTexture(GL41.GL_TEXTURE_2D, 0);
 

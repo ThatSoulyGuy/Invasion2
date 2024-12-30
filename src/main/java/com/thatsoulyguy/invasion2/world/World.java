@@ -71,7 +71,7 @@ public class World extends Component
 
         object.addComponent(Collider.create(VoxelMeshCollider.class));
 
-        object.addComponent(Objects.requireNonNull(ShaderManager.get("default")));
+        object.addComponent(Objects.requireNonNull(ShaderManager.get("pass.geometry")));
         object.addComponent(Objects.requireNonNull(TextureAtlasManager.get("blocks")));
 
         object.addComponent(Mesh.create(new ArrayList<>(), new ArrayList<>()));

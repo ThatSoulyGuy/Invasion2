@@ -371,6 +371,11 @@ public class BlockRegistry
         blocksById.remove(block.getID());
     }
 
+    public static boolean has(@NotNull String name)
+    {
+        return blocksByName.containsKey(name);
+    }
+
     public static @Nullable Block get(@NotNull String name)
     {
         return blocksByName.getOrDefault(name, null);

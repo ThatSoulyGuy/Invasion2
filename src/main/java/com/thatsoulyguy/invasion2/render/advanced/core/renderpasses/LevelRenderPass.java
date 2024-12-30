@@ -1,9 +1,11 @@
 package com.thatsoulyguy.invasion2.render.advanced.core.renderpasses;
 
 import com.thatsoulyguy.invasion2.core.Window;
+import com.thatsoulyguy.invasion2.render.Camera;
 import com.thatsoulyguy.invasion2.render.advanced.core.Framebuffer;
 import com.thatsoulyguy.invasion2.render.advanced.core.RenderPass;
 import com.thatsoulyguy.invasion2.render.advanced.core.framebuffers.LevelFramebuffer;
+import org.jetbrains.annotations.Nullable;
 import org.lwjgl.opengl.GL41;
 
 public class LevelRenderPass implements RenderPass
@@ -18,8 +20,11 @@ public class LevelRenderPass implements RenderPass
     }
 
     @Override
-    public void render()
+    public void render(@Nullable Camera camera)
     {
+        if (camera == null)
+            return;
+
         if (!active)
             return;
 

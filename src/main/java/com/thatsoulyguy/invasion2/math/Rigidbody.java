@@ -111,6 +111,8 @@ public class Rigidbody extends Component
 
                         transform.translate(result);
 
+                        velocity.set(0.0f, 0.0f, 0.0f);
+
                         if (result.y > 0)
                         {
                             collidedFromBelow = true;
