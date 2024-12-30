@@ -19,7 +19,7 @@ public class Settings
 
     public static void initialize()
     {
-        DEFAULT_RENDERING_SHADER.setValue(USE_ADVANCED_RENDERING_FEATURES.value ? ((GeometryRenderPass) Objects.requireNonNull(RenderPassManager.get(GeometryRenderPass.class))).getGeometryShader() : Objects.requireNonNull(ShaderManager.get("default")));
+        DEFAULT_RENDERING_SHADER.setValue(USE_ADVANCED_RENDERING_FEATURES.value ? ((GeometryRenderPass) Objects.requireNonNull(RenderPassManager.get(GeometryRenderPass.class))).getGeometryShader() : Objects.requireNonNull(ShaderManager.get("legacy.default")));
     }
 
     public static class Setting<T>

@@ -6,7 +6,6 @@ import com.thatsoulyguy.invasion2.render.TextureManager;
 import com.thatsoulyguy.invasion2.system.GameObject;
 import com.thatsoulyguy.invasion2.ui.UIElement;
 import org.jetbrains.annotations.NotNull;
-
 import java.util.Objects;
 
 public class ImageUIElement extends UIElement

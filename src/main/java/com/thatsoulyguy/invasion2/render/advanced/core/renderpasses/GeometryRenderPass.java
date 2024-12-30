@@ -35,7 +35,7 @@ public class GeometryRenderPass implements RenderPass
         Vector2i dimensions = Window.getDimensions();
         GL41.glViewport(0, 0, dimensions.x, dimensions.y);
 
-        GL41.glClearColor(0, 0, 0, 1);
+        GL41.glClearColor(0, 0.45f, 0.75f, 1);
         GL41.glClear(GL41.GL_COLOR_BUFFER_BIT | GL41.GL_DEPTH_BUFFER_BIT);
 
         geometryShader.bind();

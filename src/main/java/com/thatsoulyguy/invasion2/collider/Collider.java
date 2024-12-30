@@ -155,7 +155,7 @@ public abstract class Collider extends Component
         if (overlapX < EPSILON || overlapY < EPSILON || overlapZ < EPSILON)
             return null;
 
-        Vector3f mtv = new Vector3f(0, 0, 0);
+        Vector3f mtv = new Vector3f();
 
         if (overlapY <= overlapX && overlapY <= overlapZ)
         {

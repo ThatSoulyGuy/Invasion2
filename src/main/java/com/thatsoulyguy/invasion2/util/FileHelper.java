@@ -4,10 +4,10 @@ import com.thatsoulyguy.invasion2.annotation.Static;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
+import java.nio.ByteBuffer;
+import java.nio.channels.Channels;
+import java.nio.channels.ReadableByteChannel;
 import java.util.Objects;
 
 @Static
@@ -105,6 +105,46 @@ public class FileHelper
         catch (Exception exception)
         {
             throw new RuntimeException(exception);
+        }
+    }
+
+    public static ByteBuffer loadResourceAsByteBuffer(String resourcePath)
+    {
+        try (InputStream inputStream = FileHelper.class.getResourceAsStream(resourcePath))
+        {
+            if (inputStream == null)
+                throw new IOException("Resource not found: " + resourcePath);
+
+            return readInputStreamToByteBuffer(inputStream);
+        }
+        catch (IOException e)
+        {
+            throw new RuntimeException("Failed to load resource: " + resourcePath, e);
+        }
+    }
+
+    private static ByteBuffer readInputStreamToByteBuffer(InputStream inputStream) throws IOException
+    {
+        try (ReadableByteChannel channel = Channels.newChannel(inputStream))
+        {
+            ByteBuffer buffer = ByteBuffer.allocateDirect(1024 * 1024);
+
+            while (channel.read(buffer) != -1)
+            {
+                if (buffer.remaining() == 0)
+                {
+                    ByteBuffer expanded = ByteBuffer.allocateDirect(buffer.capacity() * 2);
+
+                    buffer.flip();
+
+                    expanded.put(buffer);
+
+                    buffer = expanded;
+                }
+            }
+
+            buffer.flip();
+            return buffer;
         }
     }
 }

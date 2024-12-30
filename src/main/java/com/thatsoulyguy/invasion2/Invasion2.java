@@ -13,12 +13,13 @@ import com.thatsoulyguy.invasion2.core.Window;
 import com.thatsoulyguy.invasion2.entity.Entity;
 import com.thatsoulyguy.invasion2.entity.entities.EntityPlayer;
 import com.thatsoulyguy.invasion2.input.InputManager;
+import com.thatsoulyguy.invasion2.input.KeyCode;
+import com.thatsoulyguy.invasion2.input.KeyState;
 import com.thatsoulyguy.invasion2.math.Rigidbody;
 import com.thatsoulyguy.invasion2.render.*;
 import com.thatsoulyguy.invasion2.render.advanced.RenderPassManager;
 import com.thatsoulyguy.invasion2.render.advanced.core.renderpasses.GeometryRenderPass;
 import com.thatsoulyguy.invasion2.render.advanced.core.renderpasses.LevelRenderPass;
-import com.thatsoulyguy.invasion2.render.advanced.core.renderpasses.PassthroughRenderPass;
 import com.thatsoulyguy.invasion2.render.advanced.ssao.renderpasses.SSAOBlurRenderPass;
 import com.thatsoulyguy.invasion2.render.advanced.ssao.renderpasses.SSAOConcludingRenderPass;
 import com.thatsoulyguy.invasion2.render.advanced.ssao.renderpasses.SSAORenderPass;
@@ -31,6 +32,7 @@ import com.thatsoulyguy.invasion2.ui.UIElement;
 import com.thatsoulyguy.invasion2.ui.UIManager;
 import com.thatsoulyguy.invasion2.ui.UIPanel;
 import com.thatsoulyguy.invasion2.ui.uielements.ImageUIElement;
+import com.thatsoulyguy.invasion2.ui.uielements.TextUIElement;
 import com.thatsoulyguy.invasion2.util.AssetPath;
 import com.thatsoulyguy.invasion2.util.FileHelper;
 import com.thatsoulyguy.invasion2.world.TerrainGenerator;
@@ -53,9 +55,6 @@ import java.util.stream.Collectors;
 
 public class Invasion2
 {
-    private @EffectivelyNotNull GameObject player;
-    private @EffectivelyNotNull GameObject overworld;
-
     public void preInitialize()
     {
         InputManager.initialize();
@@ -160,14 +159,21 @@ public class Invasion2
 
         UIPanel panel = UIPanel.create("testPanel");
 
-        UIElement uiElement = panel.addElement(UIElement.create(ImageUIElement.class, "test", new Vector2f(0, 0), new Vector2f(100, 100)));
+        TextUIElement uiElement = (TextUIElement) panel.addElement(UIElement.create(TextUIElement.class, "test", new Vector2f(0, 0), new Vector2f(200, 50)));
 
-        uiElement.setTexture(Objects.requireNonNull(TextureManager.get("debug")));
+        uiElement.setText("test");
+        uiElement.setFontPath(AssetPath.create("invasion2", "font/Invasion2-Default.ttf"));
+        uiElement.setFontSize(24);
+        uiElement.setAlignment(TextUIElement.TextAlignment.VERTICAL_CENTER, TextUIElement.TextAlignment.HORIZONTAL_CENTER);
 
         uiElement.setOffset(new Vector2f(0.0f, -10.0f));
         uiElement.setAlignment(UIElement.Alignment.BOTTOM);
 
-        player = GameObject.create("default.player", Layer.DEFAULT);
+        uiElement.build();
+
+
+
+        GameObject player = GameObject.create("default.player", Layer.DEFAULT);
 
         player.getTransform().setLocalPosition(new Vector3f(0.0f, 180.0f, 0.0f));
 
@@ -175,7 +181,7 @@ public class Invasion2
         player.addComponent(Rigidbody.create());
         player.addComponent(Entity.create(EntityPlayer.class));
 
-        overworld = GameObject.create("default.world", Layer.DEFAULT);
+        GameObject overworld = GameObject.create("default.world", Layer.DEFAULT);
 
         overworld.addComponent(World.create("overworld"));
 

@@ -36,9 +36,21 @@ public class Mesh extends Component
 
     private transient int vao, vbo, cbo, nbo, uvbo, ibo;
 
+    private boolean isTransparent = false;
+
     private @Nullable transient Future<Void> initializationFuture;
 
     private Mesh() { }
+
+    public void setTransparent(boolean transparent)
+    {
+        isTransparent = transparent;
+    }
+
+    public boolean isTransparent()
+    {
+        return isTransparent;
+    }
 
     @Override
     public void onLoad()
@@ -64,6 +76,12 @@ public class Mesh extends Component
 
         if (initializationFuture == null || camera == null)
             return;
+
+        if (isTransparent)
+        {
+            GL41.glEnable(GL41.GL_BLEND);
+            GL41.glBlendFunc(GL41.GL_SRC_ALPHA, GL41.GL_ONE_MINUS_SRC_ALPHA);
+        }
 
         Texture texture = getGameObject().getComponent(Texture.class);
 
@@ -99,6 +117,9 @@ public class Mesh extends Component
         GL41.glDisableVertexAttribArray(2);
         GL41.glDisableVertexAttribArray(3);
         GL41.glBindVertexArray(0);
+
+        if (isTransparent)
+            GL41.glDisable(GL41.GL_BLEND);
     }
 
     @Override
@@ -118,6 +139,12 @@ public class Mesh extends Component
             return;
 
         GL41.glDisable(GL41.GL_CULL_FACE);
+
+        if (isTransparent)
+        {
+            GL41.glEnable(GL41.GL_BLEND);
+            GL41.glBlendFunc(GL41.GL_SRC_ALPHA, GL41.GL_ONE_MINUS_SRC_ALPHA);
+        }
 
         Texture texture = getGameObject().getComponent(Texture.class);
 
@@ -164,6 +191,9 @@ public class Mesh extends Component
         GL41.glBindVertexArray(0);
 
         GL41.glEnable(GL41.GL_CULL_FACE);
+
+        if (isTransparent)
+            GL41.glDisable(GL41.GL_BLEND);
     }
 
     /**

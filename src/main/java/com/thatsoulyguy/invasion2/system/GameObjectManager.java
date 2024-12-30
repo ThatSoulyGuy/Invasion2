@@ -25,7 +25,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class GameObjectManager
 {
     private static final @NotNull ConcurrentMap<String, GameObject> gameObjectMap = new ConcurrentHashMap<>();
-    private static final @NotNull ExecutorService executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() / 2);
+    private static final @NotNull ExecutorService executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() / 3);
     private static final @NotNull BlockingQueue<GameObject> uninitializeQueue = new LinkedBlockingQueue<>();
     private static final @NotNull AtomicBoolean isUpdating = new AtomicBoolean(false);
 

@@ -20,7 +20,7 @@ import java.util.List;
 public class Rigidbody extends Component
 {
     public static final float GRAVITY = -9.8f;
-    public static final float DRAG = 0.9f;
+    public static final float DRAG = 0.0005f;
 
     private final @NotNull Vector3f velocity = new Vector3f(0,0,0);
 
@@ -55,7 +55,6 @@ public class Rigidbody extends Component
         float deltaTime = Time.getDeltaTime();
 
         Collider self = getGameObject().getComponent(BoxCollider.class);
-
         if (self == null)
         {
             System.err.println("Collider component missing from GameObject: '" + getGameObject().getName() + "'!");
@@ -65,11 +64,10 @@ public class Rigidbody extends Component
         if (!isGrounded)
             velocity.y += GRAVITY * deltaTime;
 
-        velocity.x *= DRAG;
-        velocity.z *= DRAG;
+        velocity.x *= (float) Math.pow(DRAG, deltaTime);
+        velocity.z *= (float) Math.pow(DRAG, deltaTime);
 
         Transform transform = getGameObject().getTransform();
-
         Vector3f currentPosition = transform.getWorldPosition();
 
         Vector3f newPosition = new Vector3f(
@@ -80,10 +78,10 @@ public class Rigidbody extends Component
 
         transform.setLocalPosition(newPosition);
 
-        List<Collider> colliders = new ArrayList<>(ColliderManager.getAll().stream()
+        List<Collider> colliders = ColliderManager.getAll().stream()
                 .filter(c -> c != self)
                 .filter(c -> c.getPosition().distance(transform.getWorldPosition()) < 32)
-                .toList());
+                .toList();
 
         boolean groundCheckHit = false;
         boolean collidedFromBelow = false;
@@ -99,26 +97,25 @@ public class Rigidbody extends Component
             {
                 if (self.intersects(collider))
                 {
-                    Vector3f result = self.resolve(collider, true);
+                    Vector3f resolution = self.resolve(collider, true);
 
-                    if (result.length() > 0.00001f)
+                    if (resolution.length() > 0.00001f)
                     {
-                        currentResolution.add(result);
+                        currentResolution.add(resolution);
                         resolvedAny = true;
 
-                        if (result.length() > 1.0f)
-                            result.normalize().mul(1.0f);
+                        if (resolution.length() > 1.0f)
+                            resolution.normalize().mul(1.0f);
 
-                        transform.translate(result);
-
+                        transform.translate(resolution);
                         velocity.set(0.0f, 0.0f, 0.0f);
 
-                        if (result.y > 0)
+                        if (resolution.y > 0)
                         {
                             collidedFromBelow = true;
                             velocity.y = 0.0f;
                         }
-                        else if (result.y < 0)
+                        else if (resolution.y < 0)
                             velocity.y = 0.0f;
                     }
                 }
@@ -160,16 +157,16 @@ public class Rigidbody extends Component
                     }
                 }
 
-                if (groundCheckHit)
-                    break;
+                if (groundCheckHit) break;
             }
         }
 
-        isGrounded = (collidedFromBelow || groundCheckHit);
+        isGrounded = collidedFromBelow || groundCheckHit;
 
         if (isGrounded)
             velocity.y = 0.0f;
     }
+
 
     /**
      * Adds force to the Rigidbody

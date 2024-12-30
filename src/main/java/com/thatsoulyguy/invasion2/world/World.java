@@ -27,7 +27,7 @@ public class World extends Component
     public static final int WORLD_HEIGHT = 256;
     public static final int VERTICAL_CHUNKS = WORLD_HEIGHT / Chunk.SIZE;
 
-    public static final byte RENDER_DISTANCE = 3;
+    public static final byte RENDER_DISTANCE = 5;
 
     public long seed = 354576879657L;
 
@@ -53,7 +53,7 @@ public class World extends Component
     public void initialize()
     {
         generatingChunks.clear();
-        chunkGenerationExecutor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() / 2);
+        chunkGenerationExecutor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() / 4);
     }
 
     @Override

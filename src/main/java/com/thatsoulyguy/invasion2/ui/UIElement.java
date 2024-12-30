@@ -33,7 +33,7 @@ public abstract class UIElement implements Serializable
 
     @EffectivelyNotNull String name;
 
-    transient @EffectivelyNotNull GameObject object;
+    protected transient @EffectivelyNotNull GameObject object;
 
     private @NotNull Alignment alignment = Alignment.CENTER;
     private @NotNull Vector2f offset = new Vector2f();
