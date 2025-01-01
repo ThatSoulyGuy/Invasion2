@@ -8,7 +8,6 @@ import com.thatsoulyguy.invasion2.render.Mesh;
 import com.thatsoulyguy.invasion2.render.Vertex;
 import com.thatsoulyguy.invasion2.system.Component;
 import com.thatsoulyguy.invasion2.thread.MainThreadExecutor;
-import com.thatsoulyguy.invasion2.util.ChunkAlgorithms;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector2f;
@@ -43,7 +42,7 @@ public class Chunk extends Component
             {
                 for (int z = 0; z < SIZE; z++)
                 {
-                    if (blocks[x][y][z] == BlockRegistry.BLOCK_AIR.getID())
+                    if (blocks[x][y][z] == BlockRegistry.BLOCK_AIR.getId())
                         continue;
 
                     TextureAtlas textureAtlas = getGameObject().getComponent(TextureAtlas.class);
@@ -219,7 +218,7 @@ public class Chunk extends Component
                 position.z < 0 || position.z >= SIZE)
             return true;
 
-        return blocks[position.x][position.y][position.z] == BlockRegistry.BLOCK_AIR.getID();
+        return blocks[position.x][position.y][position.z] == BlockRegistry.BLOCK_AIR.getId();
     }
 
     private void rebuildMeshAndCollider()
@@ -244,7 +243,7 @@ public class Chunk extends Component
                 {
                     short blockID = blocks[x][y][z];
 
-                    if (blockID == BlockRegistry.BLOCK_AIR.getID())
+                    if (blockID == BlockRegistry.BLOCK_AIR.getId())
                         continue;
 
                     Block block = Objects.requireNonNull(BlockRegistry.get(blockID));

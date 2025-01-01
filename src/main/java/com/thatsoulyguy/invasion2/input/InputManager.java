@@ -27,7 +27,7 @@ public class InputManager
 
     private static float scrollOffset = 0.0f;
 
-    private static final Object keyStateLock = new Object();
+    private static final @NotNull Object keyStateLock = new Object();
 
     private static @EffectivelyNotNull GLFWKeyCallback keyCallback;
     private static @EffectivelyNotNull GLFWMouseButtonCallback mouseButtonCallback;

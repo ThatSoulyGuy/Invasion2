@@ -15,7 +15,7 @@ import java.util.concurrent.ConcurrentMap;
 @Manager(Collider.class)
 public class ColliderManager
 {
-    private static final ConcurrentMap<GameObject, Collider> colliderMap = new ConcurrentHashMap<>();
+    private static final @NotNull ConcurrentMap<GameObject, Collider> colliderMap = new ConcurrentHashMap<>();
 
     private ColliderManager() { }
 

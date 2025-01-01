@@ -14,7 +14,7 @@ public class ImageUIElement extends UIElement
     public void generate(@NotNull GameObject object)
     {
         object.addComponent(Objects.requireNonNull(ShaderManager.get("ui")));
-        object.addComponent(Objects.requireNonNull(TextureManager.get("white")));
+        object.addComponent(Objects.requireNonNull(TextureManager.get("error")));
 
         object.addComponent(Mesh.create(DEFAULT_VERTICES, DEFAULT_INDICES));
 

@@ -143,6 +143,6 @@ public class ChunkAlgorithms
                 position.z < 0 || position.z >= Chunk.SIZE)
             return false;
 
-        return blocks[position.x][position.y][position.z] != BlockRegistry.BLOCK_AIR.getID();
+        return blocks[position.x][position.y][position.z] != BlockRegistry.BLOCK_AIR.getId();
     }
 }

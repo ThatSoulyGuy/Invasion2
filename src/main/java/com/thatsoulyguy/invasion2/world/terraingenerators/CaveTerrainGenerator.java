@@ -34,7 +34,7 @@ public class CaveTerrainGenerator extends TerrainGenerator
                             worldZ * CAVE_SCALE);
 
                     if (caveNoise > CAVE_THRESHOLD)
-                        blocks[x][y][z] = BlockRegistry.BLOCK_AIR.getID();
+                        blocks[x][y][z] = BlockRegistry.BLOCK_AIR.getId();
                 }
             }
         }

@@ -2,6 +2,8 @@ package com.thatsoulyguy.invasion2.block;
 
 import com.thatsoulyguy.invasion2.annotation.Manager;
 import com.thatsoulyguy.invasion2.annotation.Static;
+import com.thatsoulyguy.invasion2.item.Item;
+import com.thatsoulyguy.invasion2.item.ItemRegistry;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
@@ -117,6 +119,12 @@ public class BlockRegistry
                 new Vector3f(1.0f),
             };
         }
+
+        @Override
+        public @NotNull Item getAssociatedItem()
+        {
+            return ItemRegistry.ITEM_GRASS_BLOCK;
+        }
     };
 
     public static final Block BLOCK_DIRT = new Block()
@@ -171,6 +179,12 @@ public class BlockRegistry
                 new Vector3f(1.0f),
                 new Vector3f(1.0f),
             };
+        }
+
+        @Override
+        public @NotNull Item getAssociatedItem()
+        {
+            return ItemRegistry.ITEM_DIRT_BLOCK;
         }
     };
 
@@ -227,6 +241,12 @@ public class BlockRegistry
                 new Vector3f(1.0f),
             };
         }
+
+        @Override
+        public @NotNull Item getAssociatedItem()
+        {
+            return ItemRegistry.ITEM_STONE_BLOCK;
+        }
     };
 
     public static final Block BLOCK_LEAVES = new Block()
@@ -281,6 +301,12 @@ public class BlockRegistry
                 new Vector3f(0.27f, 0.68f, 0.18f),
                 new Vector3f(0.27f, 0.68f, 0.18f),
             };
+        }
+
+        @Override
+        public @NotNull Item getAssociatedItem()
+        {
+            return ItemRegistry.ITEM_LEAVES_BLOCK;
         }
     };
 
@@ -337,6 +363,12 @@ public class BlockRegistry
                 new Vector3f(1.0f),
             };
         }
+
+        @Override
+        public @NotNull Item getAssociatedItem()
+        {
+            return ItemRegistry.ITEM_LOG_OAK_BLOCK;
+        }
     };
 
     private static final ConcurrentMap<String, Block> blocksByName = new ConcurrentHashMap<>();
@@ -357,7 +389,7 @@ public class BlockRegistry
     public static void register(@NotNull Block object)
     {
         blocksByName.putIfAbsent(object.getRegistryName(), object);
-        blocksById.putIfAbsent(object.getID(), object);
+        blocksById.putIfAbsent(object.getId(), object);
     }
 
     public static void unregister(@NotNull String name)
@@ -368,7 +400,7 @@ public class BlockRegistry
             return;
 
         blocksByName.remove(block.getRegistryName());
-        blocksById.remove(block.getID());
+        blocksById.remove(block.getId());
     }
 
     public static boolean has(@NotNull String name)

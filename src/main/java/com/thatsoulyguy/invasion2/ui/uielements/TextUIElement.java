@@ -6,6 +6,7 @@ import com.thatsoulyguy.invasion2.render.ShaderManager;
 import com.thatsoulyguy.invasion2.render.Texture;
 import com.thatsoulyguy.invasion2.render.TextureManager;
 import com.thatsoulyguy.invasion2.system.GameObject;
+import com.thatsoulyguy.invasion2.thread.MainThreadExecutor;
 import com.thatsoulyguy.invasion2.ui.UIElement;
 import com.thatsoulyguy.invasion2.util.AssetPath;
 import org.jetbrains.annotations.NotNull;
@@ -95,9 +96,6 @@ public class TextUIElement extends UIElement
         graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         graphics.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 
-        graphics.setColor(Color.BLACK);
-        graphics.fillRect(0, 0, dimensions.x, dimensions.y);
-
         graphics.setFont(customFont);
         FontMetrics fm = graphics.getFontMetrics();
 
@@ -162,17 +160,19 @@ public class TextUIElement extends UIElement
 
         buffer.flip();
 
-        Texture rawTexture = Texture.create(text + "_texture", Texture.Filter.LINEAR, Texture.Wrapping.REPEAT, dimensions.x, dimensions.y, buffer);
+        MainThreadExecutor.submit(() ->
+        {
+            Texture rawTexture = Texture.create(text + "_texture", Texture.Filter.LINEAR, Texture.Wrapping.REPEAT, dimensions.x, dimensions.y, buffer);
 
-        object.setComponent(rawTexture);
+            object.setComponent(rawTexture);
+        });
     }
-
 
     @Override
     public void generate(@NotNull GameObject object)
     {
         object.addComponent(Objects.requireNonNull(ShaderManager.get("ui")));
-        object.addComponent(Objects.requireNonNull(TextureManager.get("white")));
+        object.addComponent(Objects.requireNonNull(TextureManager.get("error")));
 
         object.addComponent(Mesh.create(DEFAULT_VERTICES, DEFAULT_INDICES));
 

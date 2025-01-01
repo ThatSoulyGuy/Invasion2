@@ -63,14 +63,14 @@ public class GroundTerrainGenerator extends TerrainGenerator
                     if (worldY < terrainHeight)
                     {
                         if (worldY == terrainHeight - 1)
-                            blocks[x][y][z] = BlockRegistry.BLOCK_GRASS.getID();
+                            blocks[x][y][z] = BlockRegistry.BLOCK_GRASS.getId();
                         else if (worldY >= terrainHeight - 5)
-                            blocks[x][y][z] = BlockRegistry.BLOCK_DIRT.getID();
+                            blocks[x][y][z] = BlockRegistry.BLOCK_DIRT.getId();
                         else
-                            blocks[x][y][z] = BlockRegistry.BLOCK_STONE.getID();
+                            blocks[x][y][z] = BlockRegistry.BLOCK_STONE.getId();
                     }
                     else
-                        blocks[x][y][z] = BlockRegistry.BLOCK_AIR.getID();
+                        blocks[x][y][z] = BlockRegistry.BLOCK_AIR.getId();
                 }
             }
         }

@@ -10,7 +10,6 @@ import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 @CustomConstructor("create")
@@ -21,8 +20,33 @@ public class Transform extends Component
     private @EffectivelyNotNull Vector3f localScale;
 
     private @Nullable transient Transform parent;
+    private @NotNull Matrix4f cachedModelMatrix = new Matrix4f();
+
+    private transient @NotNull List<Transform> children = new ArrayList<>();
+
+    private boolean dirty = true;
 
     private Transform() { }
+
+    @Override
+    public void initialize()
+    {
+        children = new ArrayList<>();
+    }
+
+    public void addChild(@NotNull Transform child)
+    {
+        child.setParent(this);
+
+        children.add(child);
+    }
+
+    public void removeChild(@NotNull Transform child)
+    {
+        child.setParent(null);
+
+        children.remove(child);
+    }
 
     public void translate(@NotNull Vector3f translation)
     {
@@ -30,16 +54,19 @@ public class Transform extends Component
             return;
 
         localPosition.add(translation);
+        markDirty();
     }
 
     public void rotate(@NotNull Vector3f rotation)
     {
         this.localRotation.add(rotation);
+        markDirty();
     }
 
     public void scale(@NotNull Vector3f scale)
     {
         this.localScale.add(scale);
+        markDirty();
     }
 
     public @NotNull Vector3f getLocalPosition()
@@ -50,6 +77,7 @@ public class Transform extends Component
     public void setLocalPosition(@NotNull Vector3f localPosition)
     {
         this.localPosition = new Vector3f(localPosition);
+        markDirty();
     }
 
     public @NotNull Vector3f getLocalRotation()
@@ -60,6 +88,7 @@ public class Transform extends Component
     public void setLocalRotation(@NotNull Vector3f localRotation)
     {
         this.localRotation = new Vector3f(localRotation);
+        markDirty();
     }
 
     public @NotNull Vector3f getLocalScale()
@@ -70,6 +99,7 @@ public class Transform extends Component
     public void setLocalScale(@NotNull Vector3f localScale)
     {
         this.localScale = new Vector3f(localScale);
+        markDirty();
     }
 
     public @Nullable Transform getParent()
@@ -80,6 +110,7 @@ public class Transform extends Component
     public void setParent(@Nullable Transform parent)
     {
         this.parent = parent;
+        markDirty();
     }
 
     public @NotNull Vector3f getForward()
@@ -120,22 +151,43 @@ public class Transform extends Component
 
     public @NotNull Matrix4f getModelMatrix()
     {
-        float rx = (float) Math.toRadians(localRotation.x);
-        float ry = (float) Math.toRadians(localRotation.y);
-        float rz = (float) Math.toRadians(localRotation.z);
+        if (dirty)
+        {
+            float rx = (float) Math.toRadians(localRotation.x);
+            float ry = (float) Math.toRadians(localRotation.y);
+            float rz = (float) Math.toRadians(localRotation.z);
 
-        Matrix4f localMatrix = new Matrix4f()
-                .identity()
-                .translate(localPosition)
-                .rotateY(ry)
-                .rotateX(rx)
-                .rotateZ(rz)
-                .scale(localScale);
+            Matrix4f localMatrix = new Matrix4f()
+                    .identity()
+                    .translate(localPosition)
+                    .rotateY(ry)
+                    .rotateX(rx)
+                    .rotateZ(rz)
+                    .scale(localScale);
 
-        if (parent != null)
-            return parent.getModelMatrix().mul(localMatrix, new Matrix4f());
+            cachedModelMatrix = localMatrix;
+
+            dirty = false;
+
+            if (parent != null)
+                return parent.getModelMatrix().mul(localMatrix, new Matrix4f());
+            else
+                return new Matrix4f(localMatrix);
+        }
         else
-            return localMatrix;
+        {
+            if (parent != null)
+                return parent.getModelMatrix().mul(cachedModelMatrix, new Matrix4f());
+            else
+                return new Matrix4f(cachedModelMatrix);
+        }
+    }
+
+    private void markDirty()
+    {
+        dirty = true;
+
+        children.forEach(Transform::markDirty);
     }
 
     @Override

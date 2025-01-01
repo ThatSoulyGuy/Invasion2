@@ -49,12 +49,12 @@ public class CoordinateHelper
 
     /**
      * Convert world coordinates (float) to global block coordinates (int).
-     * The global block coordinates identify which block in the entire world grid
-     * the world position falls into. This does not depend on chunk coordinates and
-     * returns a continuous global indexing of blocks.
+     * The global block coordinates identify which block in the local chunk grid
+     * the world position falls into. This depends on chunk coordinates and
+     * returns a continuous local indexing of blocks.
      *
      * @param worldCoordinates The world position (float precision).
-     * @return The global block coordinates as integers.
+     * @return The local block coordinates as integers.
      */
     public static @NotNull Vector3i worldToBlockCoordinates(@NotNull Vector3f worldCoordinates)
     {
@@ -70,10 +70,28 @@ public class CoordinateHelper
     }
 
     /**
+     * Convert world coordinates (float) to global block coordinates (int).
+     * The global block coordinates identify which block in the entire world grid
+     * the world position falls into. This does not depend on chunk coordinates and
+     * returns a continuous global indexing of blocks.
+     *
+     * @param worldCoordinates The world position (float precision).
+     * @return The global block coordinates as integers.
+     */
+    public static @NotNull Vector3i worldToGlobalBlockCoordinates(@NotNull Vector3f worldCoordinates)
+    {
+        int x = (int) Math.floor(worldCoordinates.x);
+        int y = (int) Math.floor(worldCoordinates.y);
+        int z = (int) Math.floor(worldCoordinates.z);
+
+        return new Vector3i(x, y, z);
+    }
+
+    /**
      * Convert local block coordinates within a given chunk to world coordinates.
      * Given the chunk index and the block index within that chunk,
      * find the world position of the block’s "lowest" corner (integral position).
-     *
+     * <p>
      * If you want the center of the block, you could add 0.5f to each coordinate after calculation.
      *
      * @param blockCoordinates The block coordinates within the chunk
@@ -86,6 +104,22 @@ public class CoordinateHelper
         float x = (chunkCoordinates.x * (float) Chunk.SIZE) + blockCoordinates.x;
         float y = (chunkCoordinates.y * (float) Chunk.SIZE) + blockCoordinates.y;
         float z = (chunkCoordinates.z * (float) Chunk.SIZE) + blockCoordinates.z;
+
+        return new Vector3f(x, y, z);
+    }
+
+    /**
+     * Convert global block coordinates to world coordinates (float).
+     * This assumes that the global block coordinates are already continuous across the grid.
+     *
+     * @param globalBlockCoordinates The global block coordinates.
+     * @return The corresponding world coordinates (float).
+     */
+    public static @NotNull Vector3f globalBlockToWorldCoordinates(@NotNull Vector3i globalBlockCoordinates)
+    {
+        float x = (float) Math.ceil(globalBlockCoordinates.x);
+        float y = (float) Math.ceil(globalBlockCoordinates.y);
+        float z = (float) Math.ceil(globalBlockCoordinates.z);
 
         return new Vector3f(x, y, z);
     }

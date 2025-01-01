@@ -1,11 +1,11 @@
 package com.thatsoulyguy.invasion2.ui;
 
-import com.thatsoulyguy.invasion2.annotation.CustomConstructor;
 import com.thatsoulyguy.invasion2.annotation.EffectivelyNotNull;
 import com.thatsoulyguy.invasion2.core.Window;
 import com.thatsoulyguy.invasion2.render.*;
 import com.thatsoulyguy.invasion2.system.GameObject;
 import com.thatsoulyguy.invasion2.system.Layer;
+import com.thatsoulyguy.invasion2.thread.MainThreadExecutor;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector2f;
@@ -42,8 +42,6 @@ public abstract class UIElement implements Serializable
 
     private boolean isActive = true;
 
-    private long frameCounter = 0;
-
     protected UIElement() { }
 
     public abstract void generate(@NotNull GameObject object);
@@ -52,13 +50,6 @@ public abstract class UIElement implements Serializable
     {
         if (!isActive)
             return;
-
-        frameCounter++;
-
-        if (frameCounter < 2)
-            return;
-
-        frameCounter = 0;
 
         Vector2i windowDimensions = Window.getDimensions();
         Vector2f elementDimensions = getDimensions();
@@ -132,6 +123,16 @@ public abstract class UIElement implements Serializable
         object.setComponent(texture);
     }
 
+    public boolean getTransparent()
+    {
+        return object.getComponentNotNull(Mesh.class).isTransparent();
+    }
+
+    public void setTransparent(boolean transparent)
+    {
+        object.getComponentNotNull(Mesh.class).setTransparent(transparent);
+    }
+
     public boolean isActive()
     {
         return isActive;
@@ -146,7 +147,7 @@ public abstract class UIElement implements Serializable
 
     public @NotNull Vector2f getPosition()
     {
-        Vector3f position = object.getTransform().getWorldPosition();
+        Vector3f position = object.getTransform().getLocalPosition();
 
         return new Vector2f(position.x, position.y);
     }
@@ -168,7 +169,7 @@ public abstract class UIElement implements Serializable
 
     public float getRotation()
     {
-        return object.getTransform().getWorldRotation().z;
+        return object.getTransform().getLocalRotation().z;
     }
 
     public void setRotation(float rotation)
@@ -178,7 +179,7 @@ public abstract class UIElement implements Serializable
 
     public @NotNull Vector2f getDimensions()
     {
-        Vector3f dimensions = object.getTransform().getWorldScale();
+        Vector3f dimensions = object.getTransform().getLocalScale();
 
         return new Vector2f(dimensions.x, dimensions.y);
     }
@@ -186,6 +187,21 @@ public abstract class UIElement implements Serializable
     public void setDimensions(@NotNull Vector2f dimensions)
     {
         object.getTransform().setLocalScale(new Vector3f(dimensions.x, dimensions.y, 0.0f));
+    }
+
+    public void setUVs(@NotNull Vector2f[] uvs)
+    {
+        List<Vertex> vertices = List.of(new Vertex[]
+        {
+            Vertex.create(new Vector3f(0.0f, 0.0f, 0.0f), new Vector3f(1.0f), new Vector3f(0.0f), uvs[0]),
+            Vertex.create(new Vector3f(1.0f, 0.0f, 0.0f), new Vector3f(1.0f), new Vector3f(0.0f), uvs[1]),
+            Vertex.create(new Vector3f(1.0f, 1.0f, 0.0f), new Vector3f(1.0f), new Vector3f(0.0f), uvs[2]),
+            Vertex.create(new Vector3f(0.0f, 1.0f, 0.0f), new Vector3f(1.0f), new Vector3f(0.0f), uvs[3]),
+        });
+
+        object.getComponentNotNull(Mesh.class).setVertices(vertices);
+
+        MainThreadExecutor.submit(() -> object.getComponentNotNull(Mesh.class).onLoad());
     }
 
     public static <T extends UIElement> @NotNull T create(@NotNull Class<T> clazz, @NotNull String name, @NotNull Vector2f position, @NotNull Vector2f dimensions)

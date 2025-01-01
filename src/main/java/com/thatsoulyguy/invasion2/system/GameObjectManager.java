@@ -25,7 +25,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class GameObjectManager
 {
     private static final @NotNull ConcurrentMap<String, GameObject> gameObjectMap = new ConcurrentHashMap<>();
-    private static final @NotNull ExecutorService executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() / 3);
+    private static final @NotNull ExecutorService executor = Executors.newFixedThreadPool(4);
     private static final @NotNull BlockingQueue<GameObject> uninitializeQueue = new LinkedBlockingQueue<>();
     private static final @NotNull AtomicBoolean isUpdating = new AtomicBoolean(false);
 
@@ -68,14 +68,34 @@ public class GameObjectManager
         return List.copyOf(gameObjectMap.values());
     }
 
+    public static void stop()
+    {
+        gameObjectMap.values().forEach(GameObject::uninitialize);
+        gameObjectMap.clear();
+    }
+
+    public static void updateMainThread()
+    {
+        isUpdating.set(true);
+
+        gameObjectMap.values().forEach(gameObject ->
+        {
+            if (gameObject.isActive())
+                gameObject.updateMainThread();
+        });
+
+        isUpdating.set(false);
+
+        processUninitializeQueue();
+    }
+
     public static void update()
     {
         isUpdating.set(true);
 
-        List<GameObject> allGameObjects = collectAllGameObjects();
         List<Future<?>> updateTasks = new ArrayList<>();
 
-        for (GameObject gameObject : allGameObjects)
+        for (GameObject gameObject : gameObjectMap.values())
         {
             updateTasks.add(executor.submit(() ->
             {
@@ -104,27 +124,6 @@ public class GameObjectManager
         isUpdating.set(false);
 
         processUninitializeQueue();
-    }
-
-    private static List<GameObject> collectAllGameObjects()
-    {
-        List<GameObject> list = new ArrayList<>();
-        Set<GameObject> visited = ConcurrentHashMap.newKeySet();
-
-        for (GameObject gameObject : gameObjectMap.values())
-            traverse(gameObject, list, visited);
-
-        return list;
-    }
-
-    private static void traverse(GameObject gameObject, List<GameObject> list, Set<GameObject> visited)
-    {
-        if (gameObject == null || !visited.add(gameObject))
-            return;
-        list.add(gameObject);
-
-        for (GameObject child : gameObject.getChildren())
-            traverse(child, list, visited);
     }
 
     public static void renderDefault(@Nullable Camera camera)

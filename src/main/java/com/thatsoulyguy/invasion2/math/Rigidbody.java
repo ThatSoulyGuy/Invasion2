@@ -13,14 +13,13 @@ import com.thatsoulyguy.invasion2.system.Layer;
 import org.jetbrains.annotations.NotNull;
 import org.joml.Vector3f;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @CustomConstructor("create")
 public class Rigidbody extends Component
 {
-    public static final float GRAVITY = -9.8f;
-    public static final float DRAG = 0.0005f;
+    public static final float GRAVITY = -12.8f;
+    public static final float DRAG = 0.000001f;
 
     private final @NotNull Vector3f velocity = new Vector3f(0,0,0);
 
@@ -42,9 +41,9 @@ public class Rigidbody extends Component
 
         GameObject groundedCheckObject = getGameObject().addChild(GameObject.create("default.grounded_check", Layer.DEFAULT));
 
-        groundedCheck = groundedCheckObject.addComponent(Collider.create(BoxCollider.class).setSize(new Vector3f(self.getSize().x - 0.02f, self.getSize().y, self.getSize().z - 0.02f)));
+        groundedCheck = groundedCheckObject.addComponent(Collider.create(BoxCollider.class).setSize(new Vector3f(self.getSize().x - 0.001f, self.getSize().y, self.getSize().z - 0.001f)));
 
-        groundedCheckObject.getTransform().translate(new Vector3f(0.0f, -0.0001f, 0.0f));
+        groundedCheckObject.getTransform().translate(new Vector3f(0.0f, -0.01f, 0.0f));
 
         groundedCheck.setCollidable(false);
     }
@@ -150,7 +149,7 @@ public class Rigidbody extends Component
                     Vector3f voxelMin = new Vector3f(voxelWorldPosition).sub(0.5f, 0.5f, 0.5f);
                     Vector3f voxelMax = new Vector3f(voxelWorldPosition).add(0.5f, 0.5f, 0.5f);
 
-                    if (Collider.isOnTopOf(boxMin, boxMax, voxelMin, voxelMax))
+                    if (Collider.intersectsGeneric(boxMin, boxMax, voxelMin, voxelMax))
                     {
                         groundCheckHit = true;
                         break;

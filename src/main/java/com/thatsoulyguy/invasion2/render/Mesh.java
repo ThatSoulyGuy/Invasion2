@@ -163,9 +163,9 @@ public class Mesh extends Component
         int windowWidth = windowDimensions.x;
         int windowHeight = windowDimensions.y;
 
-        Matrix4f projectionMatrix = new Matrix4f().ortho(0, windowWidth, windowHeight, 0, -1.0f, 1.0f);
+        Matrix4f projectionMatrix = new Matrix4f().ortho2D(0, windowWidth, windowHeight, 0);
 
-         GL41.glBindVertexArray(vao);
+        GL41.glBindVertexArray(vao);
 
         GL41.glEnableVertexAttribArray(0);
         GL41.glEnableVertexAttribArray(1);

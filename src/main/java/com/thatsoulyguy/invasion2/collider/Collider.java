@@ -14,8 +14,6 @@ import org.joml.Vector3f;
  */
 public abstract class Collider extends Component
 {
-    private static final float EPSILON = 1e-6f;
-
     private boolean isCollidable = true;
 
     protected Collider() { }

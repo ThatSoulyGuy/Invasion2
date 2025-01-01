@@ -15,6 +15,7 @@ public abstract class Component implements Serializable
     private boolean isTransient = false;
 
     public void initialize() { }
+    public void updateMainThread() { }
     public void update() { }
     public void renderDefault(@Nullable Camera camera) { }
     public void renderUI() { }

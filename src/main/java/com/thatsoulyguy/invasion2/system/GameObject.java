@@ -24,7 +24,7 @@ public class GameObject implements Serializable
     private final @NotNull ConcurrentMap<Class<? extends Component>, Component> componentMap = new ConcurrentHashMap<>();
 
     private @Nullable transient GameObject parent;
-    private final @NotNull ConcurrentMap<String, GameObject> children = new ConcurrentHashMap<>();
+    private final @NotNull Map<String, GameObject> children = new LinkedHashMap<>();
 
     private final @NotNull AtomicBoolean isUpdating = new AtomicBoolean(false);
 
@@ -126,6 +126,8 @@ public class GameObject implements Serializable
         if (GameObjectManager.has(child.getName()))
             GameObjectManager.unregister(child.getName());
 
+        getTransform().addChild(child.getTransform());
+
         children.put(child.name, child);
         child.setParent(this);
 
@@ -134,6 +136,8 @@ public class GameObject implements Serializable
 
     public void removeChild(@NotNull GameObject child)
     {
+        getTransform().removeChild(child.getTransform());
+
         children.remove(child.name);
         child.setParent(null);
 
@@ -163,6 +167,38 @@ public class GameObject implements Serializable
     public @NotNull Layer getLayer()
     {
         return layer;
+    }
+
+    public void updateMainThread()
+    {
+        if (!isUpdating.compareAndSet(false, true))
+            return;
+
+        try
+        {
+            if (!isActive)
+                return;
+
+            lock.writeLock().lock();
+
+            try
+            {
+                componentMap.values().forEach(Component::updateMainThread);
+                children.values().forEach(GameObject::updateMainThread);
+            }
+            finally
+            {
+                lock.writeLock().unlock();
+            }
+        }
+        catch (Exception exception)
+        {
+            System.err.println("Exception in game object: '" + name + "'! " + exception.getMessage());
+        }
+        finally
+        {
+            isUpdating.set(false);
+        }
     }
 
     public void update()

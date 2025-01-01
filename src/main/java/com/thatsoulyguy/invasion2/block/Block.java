@@ -1,5 +1,7 @@
 package com.thatsoulyguy.invasion2.block;
 
+import com.thatsoulyguy.invasion2.item.Item;
+import com.thatsoulyguy.invasion2.item.ItemRegistry;
 import org.jetbrains.annotations.NotNull;
 import org.joml.Vector3f;
 
@@ -26,7 +28,12 @@ public abstract class Block
 
     public abstract @NotNull Vector3f[] getColors();
 
-    public short getID()
+    public @NotNull Item getAssociatedItem()
+    {
+        return ItemRegistry.ITEM_AIR;
+    }
+
+    public short getId()
     {
         return id;
     }

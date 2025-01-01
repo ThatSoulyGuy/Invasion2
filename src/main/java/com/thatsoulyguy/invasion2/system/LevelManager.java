@@ -7,6 +7,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.*;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -160,6 +161,22 @@ public class LevelManager
         }
 
         Time.reset();
+    }
+
+    public static void unloadLevel(@NotNull String name)
+    {
+        if (!levels.containsKey(name))
+        {
+            System.err.println("Level: '" + name + "' does not exist!");
+            return;
+        }
+
+        levels.get(name).setGameObjectNames(new ArrayList<>());
+        GameObjectManager.stop();
+
+        levels.remove(name);
+
+        currentLevel = null;
     }
 
     public static boolean deleteLevel(@NotNull String name, @NotNull String path)

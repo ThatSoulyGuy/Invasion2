@@ -4,21 +4,24 @@ import com.thatsoulyguy.invasion2.annotation.EffectivelyNotNull;
 import com.thatsoulyguy.invasion2.block.BlockRegistry;
 import com.thatsoulyguy.invasion2.collider.Collider;
 import com.thatsoulyguy.invasion2.collider.colliders.BoxCollider;
-import com.thatsoulyguy.invasion2.collider.colliders.VoxelMeshCollider;
 import com.thatsoulyguy.invasion2.core.Time;
 import com.thatsoulyguy.invasion2.entity.Entity;
 import com.thatsoulyguy.invasion2.input.*;
+import com.thatsoulyguy.invasion2.item.Item;
+import com.thatsoulyguy.invasion2.item.ItemRegistry;
 import com.thatsoulyguy.invasion2.math.Raycast;
-import com.thatsoulyguy.invasion2.math.RaycastHit;
 import com.thatsoulyguy.invasion2.math.Rigidbody;
 import com.thatsoulyguy.invasion2.render.Camera;
 import com.thatsoulyguy.invasion2.render.DebugRenderer;
 import com.thatsoulyguy.invasion2.system.GameObject;
 import com.thatsoulyguy.invasion2.system.Layer;
+import com.thatsoulyguy.invasion2.ui.Menu;
+import com.thatsoulyguy.invasion2.ui.menus.InventoryMenu;
 import com.thatsoulyguy.invasion2.util.CoordinateHelper;
 import com.thatsoulyguy.invasion2.world.World;
 import org.jetbrains.annotations.NotNull;
 import org.joml.Vector2f;
+import org.joml.Vector2i;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
 
@@ -29,6 +32,9 @@ public class EntityPlayer extends Entity
     private @EffectivelyNotNull Camera camera;
 
     private @EffectivelyNotNull Vector3i breakingBlockCoordinates;
+
+    private @EffectivelyNotNull InventoryMenu inventoryMenu;
+
     private float breakingProgress;
 
     private final float blockBreakCooldownTimerStart = 0.083f;
@@ -42,6 +48,27 @@ public class EntityPlayer extends Entity
     {
         super.initialize();
 
+        initializeCamera();
+        initializeUI();
+    }
+
+    @Override
+    public void updateMainThread()
+    {
+        super.updateMainThread();
+
+        updateControls();
+        updateMouselook();
+        updateMovement();
+
+        inventoryMenu.update();
+
+        jumpCooldownTimer -= Time.getDeltaTime();
+        blockBreakCooldownTimer -= Time.getDeltaTime();
+    }
+
+    private void initializeCamera()
+    {
         jumpCooldownTimer = jumpCooldownTimerStart;
         blockBreakCooldownTimer = blockBreakCooldownTimerStart;
 
@@ -57,52 +84,9 @@ public class EntityPlayer extends Entity
         InputManager.setMouseMode(MouseMode.LOCKED);
     }
 
-    @Override
-    public void update()
+    private void initializeUI()
     {
-        super.update();
-
-        updateControls();
-        updateMouselook();
-        updateMovement();
-
-        jumpCooldownTimer -= Time.getDeltaTime();
-        blockBreakCooldownTimer -= Time.getDeltaTime();
-    }
-
-    @Override
-    public String getDisplayName()
-    {
-        return "Player**";
-    }
-
-    @Override
-    public String getRegistryName()
-    {
-        return "entity_player";
-    }
-
-    @Override
-    public float getWalkingSpeed()
-    {
-        return 50.0f;
-    }
-
-    @Override
-    public float getRunningSpeed()
-    {
-        return 65.0f;
-    }
-
-    @Override
-    public float getMaximumHealth()
-    {
-        return 100;
-    }
-
-    public @NotNull Camera getCamera()
-    {
-        return camera;
+        inventoryMenu = Menu.create(InventoryMenu.class);
     }
 
     private void updateControls()
@@ -123,79 +107,58 @@ public class EntityPlayer extends Entity
                 InputManager.setMouseMode(MouseMode.LOCKED);
         }
 
-        Raycast.castAsync(camera.getGameObject().getTransform().getWorldPosition(), camera.getGameObject().getTransform().getForward(), 4, self).thenAccept(hit ->
+        Raycast.VoxelHit hit = Raycast.castVoxel(camera.getGameObject().getTransform().getWorldPosition(), camera.getGameObject().getTransform().getForward(), 4);
+
+        if (hit != null)
         {
-            if (hit != null)
             {
-                Vector3f point = hit.getPosition();
-                Vector3f direction = camera.getGameObject().getTransform().getForward();
-                Collider collider = hit.getCollider();
+                Vector3f point = hit.center();
 
-                point.add(direction.mul(0.5f, new Vector3f()));
+                short block = World.getLocalWorld().getBlock(point);
 
-                if (collider instanceof VoxelMeshCollider)
+                if (block != BlockRegistry.BLOCK_AIR.getId() && block != -1)
                 {
-                    short block = World.getLocalWorld().getBlock(point);
+                    Vector3i blockCoordinates = CoordinateHelper.worldToBlockCoordinates(point);
+                    Vector3i chunkCoordinates = CoordinateHelper.worldToChunkCoordinates(point);
 
-                    if (block != BlockRegistry.BLOCK_AIR.getID() && block != -1)
-                    {
-                        Vector3i blockCoordinates = CoordinateHelper.worldToBlockCoordinates(point);
-                        Vector3i chunkCoordinates = CoordinateHelper.worldToChunkCoordinates(point);
+                    Vector3f selectorSize = new Vector3f(1.0f);
+                    Vector3f selectorPosition = CoordinateHelper.blockToWorldCoordinates(blockCoordinates, chunkCoordinates).add(new Vector3f(0.5f));
 
-                        Vector3f selectorSize = new Vector3f(1.0f);
-                        Vector3f selectorPosition = CoordinateHelper.blockToWorldCoordinates(blockCoordinates, chunkCoordinates).add(new Vector3f(0.5f));
+                    Vector3f selectorMin = selectorPosition.sub(selectorSize.mul(0.5f, new Vector3f()), new Vector3f());
+                    Vector3f selectorMax = selectorPosition.add(selectorSize.mul(0.5f, new Vector3f()), new Vector3f());
 
-                        Vector3f selectorMin = selectorPosition.sub(selectorSize.mul(0.5f, new Vector3f()), new Vector3f());
-                        Vector3f selectorMax = selectorPosition.add(selectorSize.mul(0.5f, new Vector3f()), new Vector3f());
-
-                        DebugRenderer.addBox(selectorMin, selectorMax, new Vector3f(0.0f, 0.0f, 0.0f));
-                    }
+                    DebugRenderer.addBox(selectorMin, selectorMax, new Vector3f(0.0f, 0.0f, 0.0f));
                 }
             }
-        });
 
-        if (InputManager.getMouseState(MouseCode.MOUSE_LEFT, MouseState.HELD))
-        {
-            Raycast.castAsync(camera.getGameObject().getTransform().getWorldPosition(), camera.getGameObject().getTransform().getForward(), 4, self).thenAccept(hit ->
+            if (InputManager.getMouseState(MouseCode.MOUSE_LEFT, MouseState.HELD))
             {
-                if (hit != null)
+                Vector3f point = hit.center();
+
+                short blockID = World.getLocalWorld().getBlock(point);
+
+                if (blockID != BlockRegistry.BLOCK_AIR.getId() && blockID != -1)
                 {
-                    Vector3f point = hit.getPosition();
-                    Collider collider = hit.getCollider();
+                    Vector3i blockCoordinates = CoordinateHelper.worldToBlockCoordinates(point);
 
-                    point.add(camera.getGameObject().getTransform().getForward().mul(0.5f, new Vector3f()));
-
-                    if (collider instanceof VoxelMeshCollider)
+                    if (breakingBlockCoordinates == null || !breakingBlockCoordinates.equals(blockCoordinates))
                     {
-                        short blockID = World.getLocalWorld().getBlock(point);
+                        breakingBlockCoordinates = blockCoordinates;
+                        breakingProgress = 0;
+                    }
 
-                        if (blockID != BlockRegistry.BLOCK_AIR.getID() && blockID != -1)
-                        {
-                            Vector3i blockCoordinates = CoordinateHelper.worldToBlockCoordinates(point);
+                    float blockHardness = Objects.requireNonNull(BlockRegistry.get(blockID)).getHardness();
+                    breakingProgress += Time.getDeltaTime();
 
-                            if (breakingBlockCoordinates == null || !breakingBlockCoordinates.equals(blockCoordinates))
-                            {
-                                breakingBlockCoordinates = blockCoordinates;
-                                breakingProgress = 0;
-                            }
+                    if (breakingProgress >= blockHardness)
+                    {
+                        inventoryMenu.addItem(Objects.requireNonNull(BlockRegistry.get(World.getLocalWorld().getBlock(point))).getAssociatedItem().getId(), (byte) 1);
 
-                            float blockHardness = Objects.requireNonNull(BlockRegistry.get(blockID)).getHardness();
-                            breakingProgress += Time.getDeltaTime();
+                        World.getLocalWorld().setBlock(point, BlockRegistry.BLOCK_AIR.getId());
 
-                            if (breakingProgress >= blockHardness)
-                            {
-                                World.getLocalWorld().setBlock(point, BlockRegistry.BLOCK_AIR.getID());
-
-                                breakingProgress = 0;
-                                breakingBlockCoordinates = null;
-                                blockBreakCooldownTimer = blockBreakCooldownTimerStart;
-                            }
-                        }
-                        else
-                        {
-                            breakingBlockCoordinates = null;
-                            breakingProgress = 0;
-                        }
+                        breakingProgress = 0;
+                        breakingBlockCoordinates = null;
+                        blockBreakCooldownTimer = blockBreakCooldownTimerStart;
                     }
                 }
                 else
@@ -203,7 +166,40 @@ public class EntityPlayer extends Entity
                     breakingBlockCoordinates = null;
                     breakingProgress = 0;
                 }
-            });
+            }
+
+            if (InputManager.getMouseState(MouseCode.MOUSE_RIGHT, MouseState.PRESSED))
+            {
+                InventoryMenu.SlotData slot = inventoryMenu.getSlot(new Vector2i(0, inventoryMenu.currentSlotSelected));
+
+                if (slot == null)
+                    return;
+
+                Item item = ItemRegistry.get(slot.id());
+
+                if (item == null)
+                {
+                    System.err.println("Invalid item detected! (This shouldn't happen!)");
+                    return;
+                }
+
+                if (slot.count() <= 0 || !item.isBlockItem())
+                    return;
+
+                Vector3f point = hit.center();
+                Vector3f normal = hit.normal();
+
+                point.add(normal.mul(1f, new Vector3f()));
+
+                short currentBlock = World.getLocalWorld().getBlock(point);
+
+                if (currentBlock == -1 || currentBlock == BlockRegistry.BLOCK_AIR.getId())
+                {
+                    World.getLocalWorld().setBlock(point, item.getAssociatedBlock().getId());
+
+                    inventoryMenu.setSlot(new Vector2i(0, inventoryMenu.currentSlotSelected), item.getAssociatedBlock().getId(), (byte) (slot.count() - 1));
+                }
+            }
         }
         else
         {
@@ -211,26 +207,11 @@ public class EntityPlayer extends Entity
             breakingProgress = 0;
         }
 
-        if (InputManager.getMouseState(MouseCode.MOUSE_RIGHT, MouseState.PRESSED))
-        {
-            Raycast.castAsync(camera.getGameObject().getTransform().getWorldPosition(), camera.getGameObject().getTransform().getForward(), 4, self).thenAccept(hit ->
-            {
-                if (hit != null)
-                {
-                    Vector3f point = hit.getPosition();
-                    Vector3f direction = camera.getGameObject().getTransform().getForward();
-                    Collider collider = hit.getCollider();
+        if (InputManager.getScrollDelta() > 0)
+            inventoryMenu.currentSlotSelected--;
 
-                    point.sub(direction.mul(0.5f, new Vector3f()));
-
-                    if (collider instanceof VoxelMeshCollider)
-                    {
-                        World.getLocalWorld().setBlock(point, BlockRegistry.BLOCK_DIRT.getID());
-                        blockBreakCooldownTimer = blockBreakCooldownTimerStart;
-                    }
-                }
-            });
-        }
+        if (InputManager.getScrollDelta() < 0)
+            inventoryMenu.currentSlotSelected++;
     }
 
     private void updateMouselook()
@@ -294,10 +275,45 @@ public class EntityPlayer extends Entity
 
         if (InputManager.getKeyState(KeyCode.SPACE, KeyState.HELD) && rigidbody.isGrounded() && jumpCooldownTimer <= 0)
         {
-            rigidbody.addForce(new Vector3f(0.0f, 5.0f, 0.0f));
+            rigidbody.addForce(new Vector3f(0.0f, 5.5f, 0.0f));
             jumpCooldownTimer = jumpCooldownTimerStart;
         }
 
         rigidbody.addForce(movement);
+    }
+
+    @Override
+    public String getDisplayName()
+    {
+        return "Player**";
+    }
+
+    @Override
+    public String getRegistryName()
+    {
+        return "entity_player";
+    }
+
+    @Override
+    public float getWalkingSpeed()
+    {
+        return 50.0f;
+    }
+
+    @Override
+    public float getRunningSpeed()
+    {
+        return 65.0f;
+    }
+
+    @Override
+    public float getMaximumHealth()
+    {
+        return 100;
+    }
+
+    public @NotNull Camera getCamera()
+    {
+        return camera;
     }
 }

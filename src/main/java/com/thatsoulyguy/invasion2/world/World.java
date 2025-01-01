@@ -53,7 +53,7 @@ public class World extends Component
     public void initialize()
     {
         generatingChunks.clear();
-        chunkGenerationExecutor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() / 4);
+        chunkGenerationExecutor = Executors.newFixedThreadPool(3);
     }
 
     @Override
@@ -152,6 +152,25 @@ public class World extends Component
         else
         {
             return Objects.requireNonNull(getChunk(chunkCoordinates)).getBlock(blockCoordinates);
+        }
+    }
+
+    /**
+     * Gets the type of block in the world.
+     * Returns -1 if no block is found
+     *
+     * @param blockPosition The position of the block in global block coordinates
+     * @return The type of the block
+     */
+    public short getBlock(@NotNull Vector3i blockPosition)
+    {
+        Vector3i chunkCoordinates = CoordinateHelper.worldToChunkCoordinates(CoordinateHelper.globalBlockToWorldCoordinates(blockPosition));
+
+        if (!loadedChunks.contains(chunkCoordinates))
+            return -1;
+        else
+        {
+            return Objects.requireNonNull(getChunk(chunkCoordinates)).getBlock(blockPosition);
         }
     }
 

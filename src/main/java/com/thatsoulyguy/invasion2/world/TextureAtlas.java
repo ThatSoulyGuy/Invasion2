@@ -84,7 +84,7 @@ public class TextureAtlas extends Component implements ManagerLinkedClass
                 return;
             }
 
-            int atlasSize = (int)Math.ceil(Math.sqrt(totalArea));
+            int atlasSize = (int)Math.ceil(Math.sqrt(totalArea)) + 32;
 
             images.sort((a, b) ->
             {

@@ -1,6 +1,5 @@
 package com.thatsoulyguy.invasion2;
 
-import com.thatsoulyguy.invasion2.annotation.EffectivelyNotNull;
 import com.thatsoulyguy.invasion2.block.BlockRegistry;
 import com.thatsoulyguy.invasion2.collider.Collider;
 import com.thatsoulyguy.invasion2.collider.colliders.BoxCollider;
@@ -13,8 +12,7 @@ import com.thatsoulyguy.invasion2.core.Window;
 import com.thatsoulyguy.invasion2.entity.Entity;
 import com.thatsoulyguy.invasion2.entity.entities.EntityPlayer;
 import com.thatsoulyguy.invasion2.input.InputManager;
-import com.thatsoulyguy.invasion2.input.KeyCode;
-import com.thatsoulyguy.invasion2.input.KeyState;
+import com.thatsoulyguy.invasion2.item.ItemRegistry;
 import com.thatsoulyguy.invasion2.math.Rigidbody;
 import com.thatsoulyguy.invasion2.render.*;
 import com.thatsoulyguy.invasion2.render.advanced.RenderPassManager;
@@ -28,11 +26,7 @@ import com.thatsoulyguy.invasion2.system.GameObjectManager;
 import com.thatsoulyguy.invasion2.system.Layer;
 import com.thatsoulyguy.invasion2.system.LevelManager;
 import com.thatsoulyguy.invasion2.thread.MainThreadExecutor;
-import com.thatsoulyguy.invasion2.ui.UIElement;
 import com.thatsoulyguy.invasion2.ui.UIManager;
-import com.thatsoulyguy.invasion2.ui.UIPanel;
-import com.thatsoulyguy.invasion2.ui.uielements.ImageUIElement;
-import com.thatsoulyguy.invasion2.ui.uielements.TextUIElement;
 import com.thatsoulyguy.invasion2.util.AssetPath;
 import com.thatsoulyguy.invasion2.util.FileHelper;
 import com.thatsoulyguy.invasion2.world.TerrainGenerator;
@@ -42,7 +36,6 @@ import com.thatsoulyguy.invasion2.world.World;
 import com.thatsoulyguy.invasion2.world.terraingenerators.CaveTerrainGenerator;
 import com.thatsoulyguy.invasion2.world.terraingenerators.GroundTerrainGenerator;
 import com.thatsoulyguy.invasion2.world.terraingenerators.TreeTerrainGenerator;
-import org.joml.Vector2f;
 import org.joml.Vector2i;
 import org.joml.Vector3f;
 import org.lwjgl.glfw.GLFW;
@@ -92,9 +85,13 @@ public class Invasion2
         ShaderManager.register(Shader.create("ssao.conclusion", AssetPath.create("invasion2", "shader/ssao/conclusion")));
 
         TextureManager.register(Texture.create("debug", Texture.Filter.NEAREST, Texture.Wrapping.REPEAT, AssetPath.create("invasion2", "texture/debug.png")));
-        TextureManager.register(Texture.create("white", Texture.Filter.NEAREST, Texture.Wrapping.REPEAT, AssetPath.create("invasion2", "texture/white.png")));
+        TextureManager.register(Texture.create("error", Texture.Filter.NEAREST, Texture.Wrapping.REPEAT, AssetPath.create("invasion2", "texture/error.png")));
+        TextureManager.register(Texture.create("ui.hotbar", Texture.Filter.NEAREST, Texture.Wrapping.REPEAT, AssetPath.create("invasion2", "texture/ui/hotbar.png")));
+        TextureManager.register(Texture.create("ui.hotbar_selector", Texture.Filter.NEAREST, Texture.Wrapping.REPEAT, AssetPath.create("invasion2", "texture/ui/hotbar_selector.png")));
+        TextureManager.register(Texture.create("ui.transparency", Texture.Filter.NEAREST, Texture.Wrapping.REPEAT, AssetPath.create("invasion2", "texture/ui/transparency.png")));
 
         TextureAtlasManager.register(TextureAtlas.create("blocks", AssetPath.create("invasion2", "texture/block/")));
+        TextureAtlasManager.register(TextureAtlas.create("items", AssetPath.create("invasion2", "texture/item/")));
 
 
         LevelRenderPass levelRenderPass = new LevelRenderPass();
@@ -140,6 +137,7 @@ public class Invasion2
         Settings.initialize();
 
         BlockRegistry.initialize();
+        ItemRegistry.initialize();
 
         registerCollisionHandlers();
 
@@ -156,22 +154,6 @@ public class Invasion2
 
         //*
         LevelManager.createLevel("overworld", true);
-
-        UIPanel panel = UIPanel.create("testPanel");
-
-        TextUIElement uiElement = (TextUIElement) panel.addElement(UIElement.create(TextUIElement.class, "test", new Vector2f(0, 0), new Vector2f(200, 50)));
-
-        uiElement.setText("test");
-        uiElement.setFontPath(AssetPath.create("invasion2", "font/Invasion2-Default.ttf"));
-        uiElement.setFontSize(24);
-        uiElement.setAlignment(TextUIElement.TextAlignment.VERTICAL_CENTER, TextUIElement.TextAlignment.HORIZONTAL_CENTER);
-
-        uiElement.setOffset(new Vector2f(0.0f, -10.0f));
-        uiElement.setAlignment(UIElement.Alignment.BOTTOM);
-
-        uiElement.build();
-
-
 
         GameObject player = GameObject.create("default.player", Layer.DEFAULT);
 
@@ -197,9 +179,12 @@ public class Invasion2
     {
         Time.update();
 
+        System.out.println("FPS: " + Time.getFPS());
+
         World.getLocalWorld().chunkLoader = Objects.requireNonNull(GameObjectManager.get("default.player")).getTransform();
 
         UIManager.update();
+        GameObjectManager.updateMainThread();
         GameObjectManager.update();
 
         MainThreadExecutor.execute();
