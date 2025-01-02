@@ -8,6 +8,7 @@ import com.thatsoulyguy.invasion2.render.TextureManager;
 import com.thatsoulyguy.invasion2.ui.Menu;
 import com.thatsoulyguy.invasion2.ui.UIElement;
 import com.thatsoulyguy.invasion2.ui.UIPanel;
+import com.thatsoulyguy.invasion2.ui.uielements.ButtonUIElement;
 import com.thatsoulyguy.invasion2.ui.uielements.ImageUIElement;
 import com.thatsoulyguy.invasion2.ui.uielements.TextUIElement;
 import com.thatsoulyguy.invasion2.util.AssetPath;
@@ -17,6 +18,7 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Vector2f;
 import org.joml.Vector2i;
 
+import java.util.List;
 import java.util.Objects;
 
 public class InventoryMenu extends Menu
@@ -27,6 +29,8 @@ public class InventoryMenu extends Menu
     private final TextUIElement[][] slotElementTexts = new TextUIElement[4][9];
 
     private @EffectivelyNotNull UIPanel hud;
+    private @EffectivelyNotNull UIPanel survivalMenu;
+    private @EffectivelyNotNull UIPanel creativeMenu;
     private @EffectivelyNotNull UIElement hotbarSelector;
     public int currentSlotSelected = 0;
 
@@ -90,6 +94,41 @@ public class InventoryMenu extends Menu
 
         hotbarSelector.setAlignment(UIElement.Alignment.BOTTOM);
         hotbarSelector.setOffset(new Vector2f(0.0f, -5.0f));
+
+
+        survivalMenu = UIPanel.create("survival_menu");
+
+        {
+            UIElement background = survivalMenu.addElement(UIElement.create(ImageUIElement.class, "background", new Vector2f(0.0f, 0.0f), new Vector2f(100.0f, 100.0f)));
+
+            background.setTransparent(true);
+            background.setTexture(Objects.requireNonNull(TextureManager.get("ui.background")));
+            background.setStretch(List.of(UIElement.Stretch.LEFT, UIElement.Stretch.RIGHT, UIElement.Stretch.TOP, UIElement.Stretch.BOTTOM));
+
+
+            UIElement inventory = survivalMenu.addElement(UIElement.create(ImageUIElement.class, "inventory", new Vector2f(0.0f, 0.0f), new Vector2f(312.0f, 292.0f).mul(Settings.UI_SCALE.getValue())));
+
+            inventory.setTransparent(true);
+            inventory.setTexture(Objects.requireNonNull(TextureManager.get("ui.menu.survival_inventory")));
+            inventory.setOffset(new Vector2f(0.0f, -35.0f));
+
+
+            ButtonUIElement button = (ButtonUIElement) survivalMenu.addElement(UIElement.create(ButtonUIElement.class, "test_button", new Vector2f(0.0f, 0.0f), new Vector2f(400.0f, 40.0f).mul(Settings.UI_SCALE.getValue())));
+
+            button.setTransparent(false);
+            button.setTexture(Objects.requireNonNull(TextureManager.get("ui.button_default")));
+
+            button.addOnHoveringBeginEvent(() -> button.setTexture(Objects.requireNonNull(TextureManager.get("ui.button_selected"))));
+            button.addOnHoveringEndEvent(() -> button.setTexture(Objects.requireNonNull(TextureManager.get("ui.button_default"))));
+
+            button.addOnClickedEvent(() -> button.setTexture(Objects.requireNonNull(TextureManager.get("ui.button_disabled"))));
+        }
+
+        survivalMenu.setActive(false);
+
+
+        creativeMenu = UIPanel.create("creative_menu");
+        creativeMenu.setActive(false);
     }
 
     @Override
@@ -102,6 +141,26 @@ public class InventoryMenu extends Menu
             currentSlotSelected = 8;
 
         hotbarSelector.setOffset(new Vector2f((currentSlotSelected * (40 * Settings.UI_SCALE.getValue())) - 240, -5.0f));
+    }
+
+    public void setSurvivalMenuActive(boolean active)
+    {
+        survivalMenu.setActive(active);
+    }
+
+    public boolean getSurvivalMenuActive()
+    {
+        return survivalMenu.isActive();
+    }
+
+    public void setCreativeMenu(boolean active)
+    {
+        creativeMenu.setActive(active);
+    }
+
+    public boolean getCreativeMenuActive()
+    {
+        return creativeMenu.isActive();
     }
 
     private void build()

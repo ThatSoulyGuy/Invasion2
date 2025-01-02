@@ -15,8 +15,7 @@ public class Time
 
     public static float getDeltaTime()
     {
-        if (deltaTime > 0.015)
-            return 0.008f;
+        deltaTime = Math.min(deltaTime, 0.03f);
 
         return deltaTime;
     }

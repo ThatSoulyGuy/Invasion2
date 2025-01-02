@@ -123,7 +123,7 @@ public class BlockRegistry
         @Override
         public @NotNull Item getAssociatedItem()
         {
-            return ItemRegistry.ITEM_GRASS_BLOCK;
+            return ItemRegistry.ITEM_DIRT_BLOCK;
         }
     };
 
@@ -301,12 +301,6 @@ public class BlockRegistry
                 new Vector3f(0.27f, 0.68f, 0.18f),
                 new Vector3f(0.27f, 0.68f, 0.18f),
             };
-        }
-
-        @Override
-        public @NotNull Item getAssociatedItem()
-        {
-            return ItemRegistry.ITEM_LEAVES_BLOCK;
         }
     };
 

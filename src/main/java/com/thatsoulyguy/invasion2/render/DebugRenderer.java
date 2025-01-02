@@ -177,7 +177,10 @@ public class DebugRenderer //TODO: Restructure this entire disaster
                 vertexBuffer.put(line.color.x).put(line.color.y).put(line.color.z);
             }
         }
-        catch (Exception _) { } //TODO: Avoid this
+        catch (Exception _)
+        {
+            return;
+        } //TODO: Avoid this
 
         vertexBuffer.flip();
 

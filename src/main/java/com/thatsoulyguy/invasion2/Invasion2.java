@@ -72,7 +72,7 @@ public class Invasion2
 
         MainThreadExecutor.initialize();
 
-        Window.initialize("Invasion 2* (1.33.9)", windowSize);
+        Window.initialize("Invasion 2* (1.36.10)", windowSize);
 
         DebugRenderer.initialize();
 
@@ -89,6 +89,11 @@ public class Invasion2
         TextureManager.register(Texture.create("ui.hotbar", Texture.Filter.NEAREST, Texture.Wrapping.REPEAT, AssetPath.create("invasion2", "texture/ui/hotbar.png")));
         TextureManager.register(Texture.create("ui.hotbar_selector", Texture.Filter.NEAREST, Texture.Wrapping.REPEAT, AssetPath.create("invasion2", "texture/ui/hotbar_selector.png")));
         TextureManager.register(Texture.create("ui.transparency", Texture.Filter.NEAREST, Texture.Wrapping.REPEAT, AssetPath.create("invasion2", "texture/ui/transparency.png")));
+        TextureManager.register(Texture.create("ui.background", Texture.Filter.NEAREST, Texture.Wrapping.REPEAT, AssetPath.create("invasion2", "texture/ui/background.png")));
+        TextureManager.register(Texture.create("ui.button_default", Texture.Filter.NEAREST, Texture.Wrapping.REPEAT, AssetPath.create("invasion2", "texture/ui/button_default.png")));
+        TextureManager.register(Texture.create("ui.button_disabled", Texture.Filter.NEAREST, Texture.Wrapping.REPEAT, AssetPath.create("invasion2", "texture/ui/button_disabled.png")));
+        TextureManager.register(Texture.create("ui.button_selected", Texture.Filter.NEAREST, Texture.Wrapping.REPEAT, AssetPath.create("invasion2", "texture/ui/button_selected.png")));
+        TextureManager.register(Texture.create("ui.menu.survival_inventory", Texture.Filter.NEAREST, Texture.Wrapping.REPEAT, false, AssetPath.create("invasion2", "texture/ui/menu/inventory_survival.png")));
 
         TextureAtlasManager.register(TextureAtlas.create("blocks", AssetPath.create("invasion2", "texture/block/")));
         TextureAtlasManager.register(TextureAtlas.create("items", AssetPath.create("invasion2", "texture/item/")));
@@ -179,9 +184,9 @@ public class Invasion2
     {
         Time.update();
 
-        System.out.println("FPS: " + Time.getFPS());
-
         World.getLocalWorld().chunkLoader = Objects.requireNonNull(GameObjectManager.get("default.player")).getTransform();
+
+        System.out.println(Time.getFPS());
 
         UIManager.update();
         GameObjectManager.updateMainThread();

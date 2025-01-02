@@ -99,6 +99,16 @@ public class EntityPlayer extends Entity
             return;
         }
 
+        if (InputManager.getKeyState(KeyCode.E, KeyState.PRESSED))
+        {
+            if (!inventoryMenu.getSurvivalMenuActive())
+                InputManager.setMouseMode(MouseMode.FREE);
+            else
+                InputManager.setMouseMode(MouseMode.LOCKED);
+
+            inventoryMenu.setSurvivalMenuActive(!inventoryMenu.getSurvivalMenuActive());
+        }
+
         if (InputManager.getKeyState(KeyCode.ESCAPE, KeyState.PRESSED))
         {
             if (InputManager.getMouseMode() == MouseMode.LOCKED)
@@ -216,6 +226,9 @@ public class EntityPlayer extends Entity
 
     private void updateMouselook()
     {
+        if (inventoryMenu.getSurvivalMenuActive() || inventoryMenu.getCreativeMenuActive())
+            return;
+
         Vector2f mouseDelta = InputManager.getMouseDelta();
 
         Vector3f rotation = new Vector3f(camera.getGameObject().getTransform().getLocalRotation());

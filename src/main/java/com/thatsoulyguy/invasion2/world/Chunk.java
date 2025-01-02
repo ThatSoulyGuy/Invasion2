@@ -24,7 +24,7 @@ public class Chunk extends Component
     private transient List<Vertex> vertices = new ArrayList<>();
     private transient List<Integer> indices = new ArrayList<>();
 
-    private short[][][] blocks;
+    private Map<Integer, Short> blocks = new HashMap<>();
 
     private Chunk() { }
 
@@ -42,8 +42,8 @@ public class Chunk extends Component
             {
                 for (int z = 0; z < SIZE; z++)
                 {
-                    if (blocks[x][y][z] == BlockRegistry.BLOCK_AIR.getId())
-                        continue;
+                    short blockId = getBlock(x, y, z);
+                    if (blockId == BlockRegistry.BLOCK_AIR.getId()) continue;
 
                     TextureAtlas textureAtlas = getGameObject().getComponent(TextureAtlas.class);
 
@@ -53,8 +53,7 @@ public class Chunk extends Component
                         return;
                     }
 
-                    Block block = Objects.requireNonNull(BlockRegistry.get(blocks[x][y][z]));
-
+                    Block block = Objects.requireNonNull(BlockRegistry.get(blockId));
                     renderFaceIfNeeded(x, y, z, textureAtlas, block, renderingVoxelPositions);
                 }
             }
@@ -94,76 +93,42 @@ public class Chunk extends Component
 
     private void renderFaceIfNeeded(int x, int y, int z, TextureAtlas textureAtlas, Block block, List<Vector3f> renderingVoxelPositions)
     {
-        if (shouldRenderFace(new Vector3i(x, y, z + 1)))
+        Vector3f basePosition = new Vector3f(x + 0.5f, y + 0.5f, z + 0.5f);
+
+        if (!renderingVoxelPositions.contains(basePosition))
+            renderingVoxelPositions.add(basePosition);
+
+        Vector3i[] directions =
+                {
+                new Vector3i(0, 0, 1),
+                new Vector3i(0, 0, -1),
+                new Vector3i(0, 1, 0),
+                new Vector3i(0, -1, 0),
+                new Vector3i(1, 0, 0),
+                new Vector3i(-1, 0, 0)
+        };
+
+        int[] textureRotations = {180, 180, 0, 0, -90, 90};
+        int[] colorIndices = {2, 3, 0, 1, 4, 5};
+
+        for (int i = 0; i < directions.length; i++)
         {
-            addFace(
-                    new Vector3i(x, y, z),
-                    new Vector3i(0, 0, 1),
-                    block.getColors()[2],
-                    textureAtlas.getSubTextureCoordinates(block.getTextures()[2], 180)
-            );
+            Vector3i direction = directions[i];
 
-            addRenderingVoxelPosition(renderingVoxelPositions, x, y, z);
-        }
+            int colorIndex = colorIndices[i];
+            int rotation = textureRotations[i];
 
-        if (shouldRenderFace(new Vector3i(x, y, z - 1)))
-        {
-            addFace(
-                    new Vector3i(x, y, z),
-                    new Vector3i(0, 0, -1),
-                    block.getColors()[3],
-                    textureAtlas.getSubTextureCoordinates(block.getTextures()[3], 180)
-            );
+            Vector3i neighborPosition = new Vector3i(x + direction.x, y + direction.y, z + direction.z);
 
-            addRenderingVoxelPosition(renderingVoxelPositions, x, y, z);
-        }
-
-        if (shouldRenderFace(new Vector3i(x, y + 1, z)))
-        {
-            addFace(
-                    new Vector3i(x, y, z),
-                    new Vector3i(0, 1, 0),
-                    block.getColors()[0],
-                    textureAtlas.getSubTextureCoordinates(block.getTextures()[0])
-            );
-
-            addRenderingVoxelPosition(renderingVoxelPositions, x, y, z);
-        }
-
-        if (shouldRenderFace(new Vector3i(x, y - 1, z)))
-        {
-            addFace(
-                    new Vector3i(x, y, z),
-                    new Vector3i(0, -1, 0),
-                    block.getColors()[1],
-                    textureAtlas.getSubTextureCoordinates(block.getTextures()[1])
-            );
-
-            addRenderingVoxelPosition(renderingVoxelPositions, x, y, z);
-        }
-
-        if (shouldRenderFace(new Vector3i(x + 1, y, z)))
-        {
-            addFace(
-                    new Vector3i(x, y, z),
-                    new Vector3i(1, 0, 0),
-                    block.getColors()[4],
-                    textureAtlas.getSubTextureCoordinates(block.getTextures()[4], -90)
-            );
-
-            addRenderingVoxelPosition(renderingVoxelPositions, x, y, z);
-        }
-
-        if (shouldRenderFace(new Vector3i(x - 1, y, z)))
-        {
-            addFace(
-                    new Vector3i(x, y, z),
-                    new Vector3i(-1, 0, 0),
-                    block.getColors()[5],
-                    textureAtlas.getSubTextureCoordinates(block.getTextures()[5], 90)
-            );
-
-            addRenderingVoxelPosition(renderingVoxelPositions, x, y, z);
+            if (shouldRenderFace(neighborPosition))
+            {
+                addFace(
+                        new Vector3i(x, y, z),
+                        direction,
+                        block.getColors()[colorIndex],
+                        textureAtlas.getSubTextureCoordinates(block.getTextures()[colorIndex], rotation)
+                );
+            }
         }
     }
 
@@ -183,15 +148,15 @@ public class Chunk extends Component
      * @param blockPosition The (x, y, z) position in chunk space
      * @param type The block ID to place
      */
-    public void setBlock(@NotNull Vector3i blockPosition, short type)
-    {
-        if (blockPosition.x < 0 || blockPosition.x >= SIZE || blockPosition.y < 0 || blockPosition.y >= SIZE || blockPosition.z < 0 || blockPosition.z >= SIZE)
-            return;
+    public void setBlock(@NotNull Vector3i blockPosition, short type) {
+        if (!isValidPosition(blockPosition)) return;
 
-        if (blocks[blockPosition.x][blockPosition.y][blockPosition.z] == type)
-            return;
-
-        blocks[blockPosition.x][blockPosition.y][blockPosition.z] = type;
+        int index = toIndex(blockPosition.x, blockPosition.y, blockPosition.z);
+        if (type == BlockRegistry.BLOCK_AIR.getId()) {
+            blocks.remove(index);
+        } else {
+            blocks.put(index, type);
+        }
 
         rebuildMeshAndCollider();
     }
@@ -205,20 +170,36 @@ public class Chunk extends Component
      */
     public short getBlock(@NotNull Vector3i blockPosition)
     {
-        if (blockPosition.x < 0 || blockPosition.x >= SIZE || blockPosition.y < 0 || blockPosition.y >= SIZE || blockPosition.z < 0 || blockPosition.z >= SIZE)
+        if (!isValidPosition(blockPosition))
             return -1;
 
-        return blocks[blockPosition.x][blockPosition.y][blockPosition.z];
+        return getBlock(blockPosition.x, blockPosition.y, blockPosition.z);
+    }
+
+    private short getBlock(int x, int y, int z)
+    {
+        int index = toIndex(x, y, z);
+        return blocks.getOrDefault(index, BlockRegistry.BLOCK_AIR.getId());
     }
 
     private boolean shouldRenderFace(@NotNull Vector3i position)
     {
-        if (position.x < 0 || position.x >= SIZE ||
-                position.y < 0 || position.y >= SIZE ||
-                position.z < 0 || position.z >= SIZE)
+        if (!isValidPosition(position))
             return true;
 
-        return blocks[position.x][position.y][position.z] == BlockRegistry.BLOCK_AIR.getId();
+        return getBlock(position.x, position.y, position.z) == BlockRegistry.BLOCK_AIR.getId();
+    }
+
+    private boolean isValidPosition(@NotNull Vector3i position)
+    {
+        return position.x >= 0 && position.x < SIZE &&
+                position.y >= 0 && position.y < SIZE &&
+                position.z >= 0 && position.z < SIZE;
+    }
+
+    private static int toIndex(int x, int y, int z)
+    {
+        return (x & 0xF) | ((y & 0xF) << 4) | ((z & 0xF) << 8);
     }
 
     private void rebuildMeshAndCollider()
@@ -241,7 +222,7 @@ public class Chunk extends Component
             {
                 for (int z = 0; z < SIZE; z++)
                 {
-                    short blockID = blocks[x][y][z];
+                    short blockID = getBlock(x, y, z);
 
                     if (blockID == BlockRegistry.BLOCK_AIR.getId())
                         continue;
@@ -456,7 +437,27 @@ public class Chunk extends Component
     {
         Chunk result = new Chunk();
 
-        result.blocks = blocks;
+        Map<Integer, Short> blockMap = new HashMap<>();
+
+        for (int x = 0; x < blocks.length; x++)
+        {
+            for (int y = 0; y < blocks[x].length; y++)
+            {
+                for (int z = 0; z < blocks[x][y].length; z++)
+                {
+                    short blockType = blocks[x][y][z];
+
+                    if (blockType != BlockRegistry.BLOCK_AIR.getId())
+                    {
+                        int index = toIndex(x, y, z);
+
+                        blockMap.put(index, blockType);
+                    }
+                }
+            }
+        }
+
+        result.blocks = blockMap;
 
         return result;
     }

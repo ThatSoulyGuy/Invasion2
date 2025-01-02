@@ -29,6 +29,8 @@ public class Texture extends Component implements ManagerLinkedClass
 
     private transient int textureId;
     private @Nullable Vector2i dimensions = null;
+
+    private boolean flip = false;
     private boolean loadedFromMemory = false;
 
     private Texture() { }
@@ -67,7 +69,7 @@ public class Texture extends Component implements ManagerLinkedClass
             IntBuffer heightBuffer = stack.mallocInt(1);
             IntBuffer channelsBuffer = stack.mallocInt(1);
 
-            STBImage.stbi_set_flip_vertically_on_load(true);
+            STBImage.stbi_set_flip_vertically_on_load(flip);
 
             ByteBuffer rawImage = loadImageAsByteBuffer(fullPath);
 
@@ -159,6 +161,11 @@ public class Texture extends Component implements ManagerLinkedClass
         this.dimensions = dimensions;
     }
 
+    public boolean isFlipped()
+    {
+        return flip;
+    }
+
     public int getTextureId()
     {
         return textureId;
@@ -238,12 +245,18 @@ public class Texture extends Component implements ManagerLinkedClass
 
     public static @NotNull Texture create(@NotNull String name, @NotNull Filter filter, @NotNull Wrapping wrapping, @NotNull AssetPath localPath)
     {
+        return create(name, filter, wrapping, true, localPath);
+    }
+
+    public static @NotNull Texture create(@NotNull String name, @NotNull Filter filter, @NotNull Wrapping wrapping, boolean flip, @NotNull AssetPath localPath)
+    {
         Texture result = new Texture();
 
         result.setName(name);
         result.setLocalPath(localPath);
         result.setFilter(filter);
         result.setWrapping(wrapping);
+        result.flip = flip;
         result.textureId = -1;
 
         result.generate();

@@ -93,32 +93,40 @@ public class GameObjectManager
     {
         isUpdating.set(true);
 
-        List<Future<?>> updateTasks = new ArrayList<>();
+        CountDownLatch latch = new CountDownLatch(gameObjectMap.size());
 
         for (GameObject gameObject : gameObjectMap.values())
         {
-            updateTasks.add(executor.submit(() ->
+            executor.submit(() ->
             {
-                if (gameObject.isActive())
-                    gameObject.update();
-            }));
+                try
+                {
+                    if (gameObject.isActive())
+                        gameObject.update();
+                }
+                catch (Exception e)
+                {
+                    System.err.println("Error in GameObject update task: " + e.getMessage());
+                }
+                finally
+                {
+                    latch.countDown();
+                }
+            });
         }
 
-        for (Future<?> task : updateTasks)
+        try
         {
-            try
-            {
-                task.get(10, TimeUnit.SECONDS);
-            }
-            catch (TimeoutException e)
-            {
-                System.err.println("Update task timed out and may be hanging.");
-                task.cancel(true);
-            }
-            catch (Exception e)
-            {
-                System.err.println("Error in GameObject update task: " + e.getMessage());
-            }
+            boolean completed = latch.await(1, TimeUnit.SECONDS);
+
+            if (!completed)
+                System.err.println("Some update tasks timed out.");
+
+        }
+        catch (InterruptedException e)
+        {
+            Thread.currentThread().interrupt();
+            System.err.println("Update tasks interrupted: " + e.getMessage());
         }
 
         isUpdating.set(false);

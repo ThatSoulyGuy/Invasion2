@@ -17,22 +17,17 @@ import org.lwjgl.opengl.GL41;
 
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
 @CustomConstructor("create")
 public class Mesh extends Component
 {
-    private final @NotNull List<Vertex> vertices = Collections.synchronizedList(new ArrayList<>());
-    private final @NotNull List<Integer> indices = Collections.synchronizedList(new ArrayList<>());
+    private final @NotNull List<Vertex> vertices = new CopyOnWriteArrayList<>();
+    private final @NotNull List<Integer> indices = new CopyOnWriteArrayList<>();
 
     private transient int vao, vbo, cbo, nbo, uvbo, ibo;
 
@@ -105,18 +100,7 @@ public class Mesh extends Component
         shader.setShaderUniform("diffuseTexture", 0);
         shader.setShaderUniform("projection", camera.getProjectionMatrix());
         shader.setShaderUniform("view", camera.getViewMatrix());
-        shader.setShaderUniform("model", getGameObject().getTransform().getModelMatrix());
-
-        GL41.glDrawElements(GL41.GL_TRIANGLES, indices.size(), GL41.GL_UNSIGNED_INT, 0);
-
-        shader.unbind();
-        texture.unbind();
-
-        GL41.glDisableVertexAttribArray(0);
-        GL41.glDisableVertexAttribArray(1);
-        GL41.glDisableVertexAttribArray(2);
-        GL41.glDisableVertexAttribArray(3);
-        GL41.glBindVertexArray(0);
+        performCommonActions(texture, shader);
 
         if (isTransparent)
             GL41.glDisable(GL41.GL_BLEND);
@@ -177,18 +161,7 @@ public class Mesh extends Component
 
         shader.setShaderUniform("diffuse", 0);
         shader.setShaderUniform("projection", projectionMatrix);
-        shader.setShaderUniform("model", getGameObject().getTransform().getModelMatrix());
-
-        GL41.glDrawElements(GL41.GL_TRIANGLES, indices.size(), GL41.GL_UNSIGNED_INT, 0);
-
-        shader.unbind();
-        texture.unbind();
-
-        GL41.glDisableVertexAttribArray(0);
-        GL41.glDisableVertexAttribArray(1);
-        GL41.glDisableVertexAttribArray(2);
-        GL41.glDisableVertexAttribArray(3);
-        GL41.glBindVertexArray(0);
+        performCommonActions(texture, shader);
 
         GL41.glEnable(GL41.GL_CULL_FACE);
 
@@ -201,7 +174,7 @@ public class Mesh extends Component
      */
     public @NotNull List<Vertex> getVertices()
     {
-        return Collections.unmodifiableList(vertices);
+        return List.copyOf(vertices);
     }
 
     /**
@@ -209,7 +182,7 @@ public class Mesh extends Component
      */
     public @NotNull List<Integer> getIndices()
     {
-        return Collections.unmodifiableList(indices);
+        return List.copyOf(indices);
     }
 
     /**
@@ -217,8 +190,11 @@ public class Mesh extends Component
      */
     public void setVertices(@NotNull List<Vertex> vertices)
     {
-        this.vertices.clear();
-        this.vertices.addAll(vertices);
+        synchronized (this.vertices)
+        {
+            this.vertices.clear();
+            this.vertices.addAll(vertices);
+        }
     }
 
     /**
@@ -226,8 +202,11 @@ public class Mesh extends Component
      */
     public void setIndices(@NotNull List<Integer> indices)
     {
-        this.indices.clear();
-        this.indices.addAll(indices);
+        synchronized (this.indices)
+        {
+            this.indices.clear();
+            this.indices.addAll(indices);
+        }
     }
 
     /**
@@ -244,6 +223,22 @@ public class Mesh extends Component
 
         if (vao != 0)
             initializationFuture = MainThreadExecutor.submit(this::updateBufferData);
+    }
+
+    private void performCommonActions(Texture texture, Shader shader)
+    {
+        shader.setShaderUniform("model", getGameObject().getTransform().getModelMatrix());
+
+        GL41.glDrawElements(GL41.GL_TRIANGLES, indices.size(), GL41.GL_UNSIGNED_INT, 0);
+
+        shader.unbind();
+        texture.unbind();
+
+        GL41.glDisableVertexAttribArray(0);
+        GL41.glDisableVertexAttribArray(1);
+        GL41.glDisableVertexAttribArray(2);
+        GL41.glDisableVertexAttribArray(3);
+        GL41.glBindVertexArray(0);
     }
 
     private void createOrUpdateBuffers()
@@ -287,19 +282,19 @@ public class Mesh extends Component
         GL41.glBindVertexArray(vao);
 
         GL41.glBindBuffer(GL41.GL_ARRAY_BUFFER, vbo);
-        GL41.glBufferData(GL41.GL_ARRAY_BUFFER, toBuffer(vertices, Vertex::getPosition), GL41.GL_DYNAMIC_DRAW);
+        GL41.glBufferSubData(GL41.GL_ARRAY_BUFFER, 0, toBuffer(vertices, Vertex::getPosition));
 
         GL41.glBindBuffer(GL41.GL_ARRAY_BUFFER, cbo);
-        GL41.glBufferData(GL41.GL_ARRAY_BUFFER, toBuffer(vertices, Vertex::getColor), GL41.GL_DYNAMIC_DRAW);
+        GL41.glBufferSubData(GL41.GL_ARRAY_BUFFER, 0, toBuffer(vertices, Vertex::getColor));
 
         GL41.glBindBuffer(GL41.GL_ARRAY_BUFFER, nbo);
-        GL41.glBufferData(GL41.GL_ARRAY_BUFFER, toBuffer(vertices, Vertex::getNormal), GL41.GL_DYNAMIC_DRAW);
+        GL41.glBufferSubData(GL41.GL_ARRAY_BUFFER, 0, toBuffer(vertices, Vertex::getNormal));
 
         GL41.glBindBuffer(GL41.GL_ARRAY_BUFFER, uvbo);
-        GL41.glBufferData(GL41.GL_ARRAY_BUFFER, toBuffer(vertices, Vertex::getUVs), GL41.GL_DYNAMIC_DRAW);
+        GL41.glBufferSubData(GL41.GL_ARRAY_BUFFER, 0, toBuffer(vertices, Vertex::getUVs));
 
         GL41.glBindBuffer(GL41.GL_ELEMENT_ARRAY_BUFFER, ibo);
-        GL41.glBufferData(GL41.GL_ELEMENT_ARRAY_BUFFER, toBuffer(indices), GL41.GL_DYNAMIC_DRAW);
+        GL41.glBufferSubData(GL41.GL_ELEMENT_ARRAY_BUFFER, 0, toBuffer(indices));
 
         GL41.glBindVertexArray(0);
     }

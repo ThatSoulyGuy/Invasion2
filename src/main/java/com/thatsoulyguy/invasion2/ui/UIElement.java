@@ -13,6 +13,7 @@ import org.joml.Vector2i;
 import org.joml.Vector3f;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.List;
 
 public abstract class UIElement implements Serializable
@@ -36,7 +37,10 @@ public abstract class UIElement implements Serializable
     protected transient @EffectivelyNotNull GameObject object;
 
     private @NotNull Alignment alignment = Alignment.CENTER;
+
     private @NotNull Vector2f offset = new Vector2f();
+
+    private @NotNull List<Stretch> stretch = new ArrayList<>();
 
     @Nullable UIPanel parent;
 
@@ -50,6 +54,8 @@ public abstract class UIElement implements Serializable
     {
         if (!isActive)
             return;
+
+        applyStretch();
 
         Vector2i windowDimensions = Window.getDimensions();
         Vector2f elementDimensions = getDimensions();
@@ -84,6 +90,82 @@ public abstract class UIElement implements Serializable
         }
 
         newPosition.add(offset);
+        setPosition(newPosition);
+    }
+
+    private void applyStretch()
+    {
+        Vector2i windowDimensions = Window.getDimensions();
+        Vector2f newDimensions = getDimensions();
+        Vector2f newPosition = getPosition();
+
+        if (stretch.contains(Stretch.LEFT) && stretch.contains(Stretch.RIGHT))
+        {
+            newDimensions.x = windowDimensions.x - offset.x * 2;
+            newPosition.x = offset.x;
+        }
+        else if (stretch.contains(Stretch.LEFT))
+        {
+            float rightBoundary = newPosition.x + newDimensions.x;
+
+            newDimensions.x = rightBoundary - offset.x;
+            newPosition.x = offset.x;
+        }
+        else if (stretch.contains(Stretch.RIGHT))
+            newDimensions.x = windowDimensions.x - newPosition.x - offset.x;
+
+        if (stretch.contains(Stretch.TOP) && stretch.contains(Stretch.BOTTOM))
+        {
+            newDimensions.y = windowDimensions.y - offset.y * 2;
+            newPosition.y = offset.y;
+        }
+        else if (stretch.contains(Stretch.TOP))
+        {
+            float bottomBoundary = newPosition.y + newDimensions.y;
+
+            newDimensions.y = bottomBoundary - offset.y;
+            newPosition.y = offset.y;
+        }
+        else if (stretch.contains(Stretch.BOTTOM))
+            newDimensions.y = windowDimensions.y - newPosition.y - offset.y;
+
+        setDimensions(newDimensions);
+
+        if (!stretch.contains(Stretch.LEFT) && !stretch.contains(Stretch.RIGHT))
+        {
+            switch (alignment)
+            {
+                case LEFT:
+                    newPosition.x = offset.x;
+                    break;
+                case RIGHT:
+                    newPosition.x = windowDimensions.x - newDimensions.x - offset.x;
+                    break;
+                case CENTER:
+                    newPosition.x = (windowDimensions.x - newDimensions.x) / 2.0f;
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        if (!stretch.contains(Stretch.TOP) && !stretch.contains(Stretch.BOTTOM))
+        {
+            switch (alignment)
+            {
+                case TOP:
+                    newPosition.y = offset.y;
+                    break;
+                case BOTTOM:
+                    newPosition.y = windowDimensions.y - newDimensions.y - offset.y;
+                    break;
+                case CENTER:
+                    newPosition.y = (windowDimensions.y - newDimensions.y) / 2.0f;
+                    break;
+                default:
+                    break;
+            }
+        }
 
         setPosition(newPosition);
     }
@@ -96,6 +178,16 @@ public abstract class UIElement implements Serializable
     public void setAlignment(@NotNull Alignment alignment)
     {
         this.alignment = alignment;
+    }
+
+    public @NotNull List<Stretch> getStretch()
+    {
+        return stretch;
+    }
+
+    public void setStretch(@NotNull List<Stretch> stretch)
+    {
+        this.stretch = stretch;
     }
 
     public @NotNull Vector2f getOffset()
@@ -141,7 +233,6 @@ public abstract class UIElement implements Serializable
     public void setActive(boolean active)
     {
         object.setActive(active);
-
         isActive = active;
     }
 
@@ -200,7 +291,6 @@ public abstract class UIElement implements Serializable
         });
 
         object.getComponentNotNull(Mesh.class).setVertices(vertices);
-
         MainThreadExecutor.submit(() -> object.getComponentNotNull(Mesh.class).onLoad());
     }
 
@@ -215,14 +305,12 @@ public abstract class UIElement implements Serializable
         catch (Exception e)
         {
             System.err.println("Missing constructor from UIElement! This shouldn't happen!");
-
             return clazz.cast(new Object());
         }
 
         result.name = name;
 
         result.object = GameObject.create("ui." + name, Layer.UI);
-
         result.object.getTransform().setLocalPosition(new Vector3f(position.x, position.y, 0.0f));
         result.object.getTransform().setLocalScale(new Vector3f(dimensions.x, dimensions.y, 1.0f));
 
@@ -236,6 +324,16 @@ public abstract class UIElement implements Serializable
         TOP,
         BOTTOM,
         CENTER,
+        RIGHT,
+        LEFT
+    }
+
+    public enum Stretch
+    {
+        MIDDLE,
+        CENTER,
+        TOP,
+        BOTTOM,
         RIGHT,
         LEFT
     }
