@@ -10,8 +10,8 @@ import org.jetbrains.annotations.Nullable;
 
 import java.io.*;
 import java.lang.reflect.Field;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 @CustomConstructor("create")
 public class UIPanel implements Serializable
@@ -20,7 +20,7 @@ public class UIPanel implements Serializable
 
     @EffectivelyNotNull GameObject object;
 
-    private final @NotNull ConcurrentMap<String, UIElement> uiElementsMap = new ConcurrentHashMap<>();
+    private final @NotNull Map<String, UIElement> uiElementsMap = new LinkedHashMap<>();
 
     private boolean isActive = true;
 

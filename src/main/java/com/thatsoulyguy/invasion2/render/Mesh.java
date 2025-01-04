@@ -1,6 +1,7 @@
 package com.thatsoulyguy.invasion2.render;
 
 import com.thatsoulyguy.invasion2.annotation.CustomConstructor;
+import com.thatsoulyguy.invasion2.annotation.EffectivelyNotNull;
 import com.thatsoulyguy.invasion2.core.Settings;
 import com.thatsoulyguy.invasion2.core.Window;
 import com.thatsoulyguy.invasion2.system.Component;
@@ -13,13 +14,17 @@ import org.joml.Vector2f;
 import org.joml.Vector2i;
 import org.joml.Vector3f;
 import org.lwjgl.BufferUtils;
+import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GL41;
 
+import java.nio.Buffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.*;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -33,43 +38,60 @@ public class Mesh extends Component
 
     private boolean isTransparent = false;
 
-    private @Nullable transient Future<Void> initializationFuture;
+    private transient @EffectivelyNotNull CountDownLatch initializationLatch = new CountDownLatch(1);
 
     private Mesh() { }
 
-    public void setTransparent(boolean transparent)
+    @Override
+    public void initialize()
     {
-        isTransparent = transparent;
-    }
+        initializationLatch = new CountDownLatch(1);
 
-    public boolean isTransparent()
-    {
-        return isTransparent;
+        vao = -1;
+        vbo = -1;
+        cbo = -1;
+        nbo = -1;
+        uvbo = -1;
+        ibo = -1;
     }
 
     @Override
     public void onLoad()
     {
-        if (vao == 0)
-            initializationFuture = MainThreadExecutor.submit(this::createOrUpdateBuffers);
+        if (vao == -1)
+        {
+            MainThreadExecutor.submit(() ->
+            {
+                try
+                {
+                    createOrUpdateBuffers();
+                }
+                finally
+                {
+                    initializationLatch.countDown();
+                }
+            });
+        }
         else
-            initializationFuture = MainThreadExecutor.submit(this::updateBufferData);
+        {
+            MainThreadExecutor.submit(() ->
+            {
+                try
+                {
+                    updateBufferData();
+                }
+                finally
+                {
+                    initializationLatch.countDown();
+                }
+            });
+        }
     }
 
     @Override
     public void renderDefault(@Nullable Camera camera)
     {
-        try
-        {
-            if (initializationFuture != null)
-                initializationFuture.get(0, TimeUnit.SECONDS);
-        }
-        catch (TimeoutException | InterruptedException | ExecutionException _)
-        {
-            return;
-        }
-
-        if (initializationFuture == null || camera == null)
+        if (!checkInitialization() || camera == null)
             return;
 
         if (isTransparent)
@@ -100,26 +122,33 @@ public class Mesh extends Component
         shader.setShaderUniform("diffuseTexture", 0);
         shader.setShaderUniform("projection", camera.getProjectionMatrix());
         shader.setShaderUniform("view", camera.getViewMatrix());
-        performCommonActions(texture, shader);
+
+        shader.setShaderUniform("model", getGameObject().getTransform().getModelMatrix());
+
+        GL41.glDrawElements(GL41.GL_TRIANGLES, indices.size(), GL41.GL_UNSIGNED_INT, 0);
+
+        shader.unbind();
+        texture.unbind();
+
+        GL41.glDisableVertexAttribArray(0);
+        GL41.glDisableVertexAttribArray(1);
+        GL41.glDisableVertexAttribArray(2);
+        GL41.glDisableVertexAttribArray(3);
+        GL41.glBindVertexArray(0);
 
         if (isTransparent)
             GL41.glDisable(GL41.GL_BLEND);
+
+        int error = GL41.glGetError();
+
+        if (error != GL41.GL_NO_ERROR)
+            System.err.println("OpenGL Error (renderDefault): " + error);
     }
 
     @Override
     public void renderUI()
     {
-        try
-        {
-            if (initializationFuture != null)
-                initializationFuture.get(0, TimeUnit.SECONDS);
-        }
-        catch (TimeoutException | InterruptedException | ExecutionException _)
-        {
-            return;
-        }
-
-        if (initializationFuture == null)
+        if (!checkInitialization())
             return;
 
         GL41.glDisable(GL41.GL_CULL_FACE);
@@ -136,7 +165,6 @@ public class Mesh extends Component
             texture = Objects.requireNonNull(getGameObject().getComponent(TextureAtlas.class)).getOutputTexture();
 
         Shader shader = getGameObject().getComponent(Shader.class);
-
         if (texture == null || shader == null)
         {
             System.err.println("Shader or Texture component(s) missing from GameObject: '" + getGameObject().getName() + "'!");
@@ -161,12 +189,29 @@ public class Mesh extends Component
 
         shader.setShaderUniform("diffuse", 0);
         shader.setShaderUniform("projection", projectionMatrix);
-        performCommonActions(texture, shader);
+
+        shader.setShaderUniform("model", getGameObject().getTransform().getModelMatrix());
+
+        GL41.glDrawElements(GL41.GL_TRIANGLES, indices.size(), GL41.GL_UNSIGNED_INT, 0);
+
+        shader.unbind();
+        texture.unbind();
+
+        GL41.glDisableVertexAttribArray(0);
+        GL41.glDisableVertexAttribArray(1);
+        GL41.glDisableVertexAttribArray(2);
+        GL41.glDisableVertexAttribArray(3);
+        GL41.glBindVertexArray(0);
 
         GL41.glEnable(GL41.GL_CULL_FACE);
 
         if (isTransparent)
             GL41.glDisable(GL41.GL_BLEND);
+
+        int error = GL41.glGetError();
+
+        if (error != GL41.GL_NO_ERROR)
+            System.err.println("OpenGL Error (renderUI): " + error);
     }
 
     /**
@@ -209,6 +254,16 @@ public class Mesh extends Component
         }
     }
 
+    public void setTransparent(boolean transparent)
+    {
+        isTransparent = transparent;
+    }
+
+    public boolean isTransparent()
+    {
+        return isTransparent;
+    }
+
     /**
      * Modify existing vertices and/or indices in-place. Once complete,
      * the data is re-uploaded to the GPU so the changes appear in the mesh.
@@ -218,27 +273,22 @@ public class Mesh extends Component
      */
     public void modify(@NotNull Consumer<List<Vertex>> vertexModifier, @NotNull Consumer<List<Integer>> indexModifier)
     {
-        vertexModifier.accept(vertices);
-        indexModifier.accept(indices);
+        synchronized (this.vertices)
+        {
+            vertexModifier.accept(vertices);
+            indexModifier.accept(indices);
 
-        if (vao != 0)
-            initializationFuture = MainThreadExecutor.submit(this::updateBufferData);
+            if (vao != -1)
+                MainThreadExecutor.submit(this::updateBufferData);
+        }
     }
 
-    private void performCommonActions(Texture texture, Shader shader)
+    private boolean checkInitialization()
     {
-        shader.setShaderUniform("model", getGameObject().getTransform().getModelMatrix());
+        if (initializationLatch.getCount() != 0)
+            return false;
 
-        GL41.glDrawElements(GL41.GL_TRIANGLES, indices.size(), GL41.GL_UNSIGNED_INT, 0);
-
-        shader.unbind();
-        texture.unbind();
-
-        GL41.glDisableVertexAttribArray(0);
-        GL41.glDisableVertexAttribArray(1);
-        GL41.glDisableVertexAttribArray(2);
-        GL41.glDisableVertexAttribArray(3);
-        GL41.glBindVertexArray(0);
+        return vao != -1 && vbo != -1 && cbo != -1 && uvbo != -1 && ibo != -1;
     }
 
     private void createOrUpdateBuffers()
@@ -275,28 +325,57 @@ public class Mesh extends Component
         GL41.glBufferData(GL41.GL_ELEMENT_ARRAY_BUFFER, toBuffer(indices), GL41.GL_DYNAMIC_DRAW);
 
         GL41.glBindVertexArray(0);
+
+        int error = GL41.glGetError();
+
+        if (error != GL41.GL_NO_ERROR)
+            System.err.println("OpenGL Error (createOrUpdateBuffers):" + error);
     }
 
     private void updateBufferData()
     {
         GL41.glBindVertexArray(vao);
 
+        FloatBuffer positionBuffer = toBuffer(vertices, Vertex::getPosition);
         GL41.glBindBuffer(GL41.GL_ARRAY_BUFFER, vbo);
-        GL41.glBufferSubData(GL41.GL_ARRAY_BUFFER, 0, toBuffer(vertices, Vertex::getPosition));
+        resizeOrSubData(GL41.GL_ARRAY_BUFFER, positionBuffer);
 
+        FloatBuffer colorBuffer = toBuffer(vertices, Vertex::getColor);
         GL41.glBindBuffer(GL41.GL_ARRAY_BUFFER, cbo);
-        GL41.glBufferSubData(GL41.GL_ARRAY_BUFFER, 0, toBuffer(vertices, Vertex::getColor));
+        resizeOrSubData(GL41.GL_ARRAY_BUFFER, colorBuffer);
 
+        // Update normal buffer
+        FloatBuffer normalBuffer = toBuffer(vertices, Vertex::getNormal);
         GL41.glBindBuffer(GL41.GL_ARRAY_BUFFER, nbo);
-        GL41.glBufferSubData(GL41.GL_ARRAY_BUFFER, 0, toBuffer(vertices, Vertex::getNormal));
+        resizeOrSubData(GL41.GL_ARRAY_BUFFER, normalBuffer);
 
+        FloatBuffer uvBuffer = toBuffer(vertices, Vertex::getUVs);
         GL41.glBindBuffer(GL41.GL_ARRAY_BUFFER, uvbo);
-        GL41.glBufferSubData(GL41.GL_ARRAY_BUFFER, 0, toBuffer(vertices, Vertex::getUVs));
+        resizeOrSubData(GL41.GL_ARRAY_BUFFER, uvBuffer);
 
+        IntBuffer indexBuffer = toBuffer(indices);
         GL41.glBindBuffer(GL41.GL_ELEMENT_ARRAY_BUFFER, ibo);
-        GL41.glBufferSubData(GL41.GL_ELEMENT_ARRAY_BUFFER, 0, toBuffer(indices));
+        resizeOrSubData(GL41.GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
 
         GL41.glBindVertexArray(0);
+
+        int error = GL41.glGetError();
+        if (error != GL41.GL_NO_ERROR)
+            System.err.println("OpenGL Error (updateBufferData): " + error);
+    }
+
+    private <T extends Buffer> void resizeOrSubData(int target, T data)
+    {
+        int newSize = data.capacity() * (data instanceof FloatBuffer ? Float.BYTES : Integer.BYTES);
+        int currentSize = GL41.glGetBufferParameteri(target, GL41.GL_BUFFER_SIZE);
+
+        if (newSize > currentSize)
+            GL41.glBufferData(target, newSize, GL41.GL_DYNAMIC_DRAW);
+
+        if (data instanceof FloatBuffer buffer)
+            GL41.glBufferSubData(target, 0, buffer);
+        else if (data instanceof IntBuffer buffer)
+            GL41.glBufferSubData(target, 0, buffer);
     }
 
     private static <T> FloatBuffer toBuffer(List<Vertex> vertices, Function<Vertex, T> extractor)

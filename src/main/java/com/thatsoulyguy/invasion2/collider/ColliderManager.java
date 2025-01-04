@@ -5,7 +5,6 @@ import com.thatsoulyguy.invasion2.annotation.Static;
 import com.thatsoulyguy.invasion2.system.GameObject;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.joml.Vector3f;
 
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;

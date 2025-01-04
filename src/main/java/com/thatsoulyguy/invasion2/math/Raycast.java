@@ -1,11 +1,9 @@
 package com.thatsoulyguy.invasion2.math;
 
 import com.thatsoulyguy.invasion2.annotation.Static;
-import com.thatsoulyguy.invasion2.block.Block;
 import com.thatsoulyguy.invasion2.block.BlockRegistry;
 import com.thatsoulyguy.invasion2.collider.Collider;
 import com.thatsoulyguy.invasion2.collider.ColliderManager;
-import com.thatsoulyguy.invasion2.collider.colliders.VoxelMeshCollider;
 import com.thatsoulyguy.invasion2.util.CoordinateHelper;
 import com.thatsoulyguy.invasion2.world.Chunk;
 import com.thatsoulyguy.invasion2.world.World;
@@ -15,7 +13,9 @@ import org.joml.Vector3f;
 import org.joml.Vector3i;
 
 import java.util.List;
-import java.util.concurrent.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Contains a method(s) for ray casting.

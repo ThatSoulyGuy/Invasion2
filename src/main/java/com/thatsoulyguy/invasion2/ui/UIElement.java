@@ -2,7 +2,9 @@ package com.thatsoulyguy.invasion2.ui;
 
 import com.thatsoulyguy.invasion2.annotation.EffectivelyNotNull;
 import com.thatsoulyguy.invasion2.core.Window;
-import com.thatsoulyguy.invasion2.render.*;
+import com.thatsoulyguy.invasion2.render.Mesh;
+import com.thatsoulyguy.invasion2.render.Texture;
+import com.thatsoulyguy.invasion2.render.Vertex;
 import com.thatsoulyguy.invasion2.system.GameObject;
 import com.thatsoulyguy.invasion2.system.Layer;
 import com.thatsoulyguy.invasion2.thread.MainThreadExecutor;
@@ -15,6 +17,7 @@ import org.joml.Vector3f;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public abstract class UIElement implements Serializable
 {
@@ -46,6 +49,8 @@ public abstract class UIElement implements Serializable
 
     private boolean isActive = true;
 
+    private boolean alignAndStretch = true;
+
     protected UIElement() { }
 
     public abstract void generate(@NotNull GameObject object);
@@ -53,6 +58,9 @@ public abstract class UIElement implements Serializable
     public void update()
     {
         if (!isActive)
+            return;
+
+        if (!alignAndStretch)
             return;
 
         applyStretch();
@@ -213,6 +221,22 @@ public abstract class UIElement implements Serializable
     public void setTexture(@NotNull Texture texture)
     {
         object.setComponent(texture);
+    }
+
+    public boolean doesAlignAndStretch()
+    {
+        return alignAndStretch;
+    }
+
+    public void setAlignAndStretch(boolean alignAndStretch)
+    {
+        this.alignAndStretch = alignAndStretch;
+    }
+
+    public void setColor(@NotNull Vector3f color)
+    {
+        object.getComponentNotNull(Mesh.class).setVertices(object.getComponentNotNull(Mesh.class).getVertices().stream().map(vertex -> Vertex.create(vertex.getPosition(), color, vertex.getNormal(), vertex.getUVs())).collect(Collectors.toList()));
+        object.getComponentNotNull(Mesh.class).onLoad();
     }
 
     public boolean getTransparent()

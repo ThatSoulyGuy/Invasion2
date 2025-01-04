@@ -3,7 +3,6 @@ package com.thatsoulyguy.invasion2.collider;
 import com.thatsoulyguy.invasion2.collider.colliders.BoxCollider;
 import com.thatsoulyguy.invasion2.collider.colliders.VoxelMeshCollider;
 import com.thatsoulyguy.invasion2.collider.handler.CollisionHandlerManager;
-import com.thatsoulyguy.invasion2.render.DebugRenderer;
 import com.thatsoulyguy.invasion2.system.Component;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;

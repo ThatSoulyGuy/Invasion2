@@ -1,6 +1,8 @@
 package com.thatsoulyguy.invasion2.ui.uielements;
 
-import com.thatsoulyguy.invasion2.input.*;
+import com.thatsoulyguy.invasion2.input.InputManager;
+import com.thatsoulyguy.invasion2.input.MouseCode;
+import com.thatsoulyguy.invasion2.input.MouseState;
 import com.thatsoulyguy.invasion2.render.Mesh;
 import com.thatsoulyguy.invasion2.render.ShaderManager;
 import com.thatsoulyguy.invasion2.render.TextureManager;
@@ -34,8 +36,7 @@ public class ButtonUIElement extends UIElement
         Vector2f mousePosition = InputManager.getMousePosition();
 
         boolean isOver = isMouseOver(position, dimensions, mousePosition);
-        boolean isMousePressed = InputManager.getMouseState(MouseCode.MOUSE_LEFT, MouseState.PRESSED) ||
-                InputManager.getMouseState(MouseCode.MOUSE_LEFT, MouseState.HELD);
+        boolean isMousePressed = InputManager.getMouseState(MouseCode.MOUSE_LEFT, MouseState.PRESSED);
         boolean isMouseReleased = InputManager.getMouseState(MouseCode.MOUSE_LEFT, MouseState.RELEASED);
 
         if (isOver && !wasHovering)

@@ -8,8 +8,6 @@ import org.jetbrains.annotations.NotNull;
 import org.joml.Vector2f;
 import org.lwjgl.glfw.*;
 
-import java.util.Arrays;
-
 @Static
 public class InputManager
 {

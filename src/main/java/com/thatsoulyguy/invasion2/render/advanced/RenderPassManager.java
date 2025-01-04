@@ -7,20 +7,22 @@ import com.thatsoulyguy.invasion2.render.advanced.core.RenderPass;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import java.util.Map;
 
 @Static
 @Manager(RenderPass.class)
 public class RenderPassManager
 {
-    private static final @NotNull ConcurrentMap<Class<? extends RenderPass>, RenderPass> renderPassMap = new ConcurrentHashMap<>();
+    private static final @NotNull Map<Class<? extends RenderPass>, RenderPass> renderPassMap = new LinkedHashMap<>();
 
     private RenderPassManager() { }
 
     public static void register(@NotNull RenderPass object)
     {
+        object.initialize();
+
         renderPassMap.putIfAbsent(object.getClass(), object);
     }
 

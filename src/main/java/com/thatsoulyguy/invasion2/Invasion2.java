@@ -94,6 +94,7 @@ public class Invasion2
         TextureManager.register(Texture.create("ui.button_disabled", Texture.Filter.NEAREST, Texture.Wrapping.REPEAT, AssetPath.create("invasion2", "texture/ui/button_disabled.png")));
         TextureManager.register(Texture.create("ui.button_selected", Texture.Filter.NEAREST, Texture.Wrapping.REPEAT, AssetPath.create("invasion2", "texture/ui/button_selected.png")));
         TextureManager.register(Texture.create("ui.menu.survival_inventory", Texture.Filter.NEAREST, Texture.Wrapping.REPEAT, false, AssetPath.create("invasion2", "texture/ui/menu/inventory_survival.png")));
+        TextureManager.register(Texture.create("ui.menu.slot_darken", Texture.Filter.NEAREST, Texture.Wrapping.REPEAT, false, AssetPath.create("invasion2", "texture/ui/menu/slot_darken.png")));
 
         TextureAtlasManager.register(TextureAtlas.create("blocks", AssetPath.create("invasion2", "texture/block/")));
         TextureAtlasManager.register(TextureAtlas.create("items", AssetPath.create("invasion2", "texture/item/")));
@@ -101,12 +102,9 @@ public class Invasion2
 
         LevelRenderPass levelRenderPass = new LevelRenderPass();
 
-        levelRenderPass.initialize();
-
         RenderPassManager.register(levelRenderPass);
 
         GeometryRenderPass geometryPass = new GeometryRenderPass();
-        geometryPass.initialize();
 
         RenderPassManager.register(geometryPass);
 
@@ -116,12 +114,12 @@ public class Invasion2
                 geometryPass.getNormalTex()
         );
 
-        ssaoPass.initialize();
+        RenderPassManager.register(ssaoPass);
 
 
         SSAOBlurRenderPass ssaoBlurPass = new SSAOBlurRenderPass(ssaoPass.getSSAOColor());
 
-        ssaoBlurPass.initialize();
+        RenderPassManager.register(ssaoBlurPass);
 
 
         SSAOConcludingRenderPass concludingPass = new SSAOConcludingRenderPass(
@@ -131,12 +129,7 @@ public class Invasion2
                 ssaoBlurPass.getBlurredSSAO()
         );
 
-        concludingPass.initialize();
-
-
         RenderPassManager.register(concludingPass);
-        RenderPassManager.register(ssaoBlurPass);
-        RenderPassManager.register(ssaoPass);
 
 
         Settings.initialize();
@@ -186,11 +179,9 @@ public class Invasion2
 
         World.getLocalWorld().chunkLoader = Objects.requireNonNull(GameObjectManager.get("default.player")).getTransform();
 
-        System.out.println(Time.getFPS());
-
-        UIManager.update();
         GameObjectManager.updateMainThread();
         GameObjectManager.update();
+        UIManager.update();
 
         MainThreadExecutor.execute();
 

@@ -17,6 +17,7 @@ import com.thatsoulyguy.invasion2.system.GameObject;
 import com.thatsoulyguy.invasion2.system.Layer;
 import com.thatsoulyguy.invasion2.ui.Menu;
 import com.thatsoulyguy.invasion2.ui.menus.InventoryMenu;
+import com.thatsoulyguy.invasion2.ui.menus.PauseMenu;
 import com.thatsoulyguy.invasion2.util.CoordinateHelper;
 import com.thatsoulyguy.invasion2.world.World;
 import org.jetbrains.annotations.NotNull;
@@ -33,6 +34,7 @@ public class EntityPlayer extends Entity
 
     private @EffectivelyNotNull Vector3i breakingBlockCoordinates;
 
+    private @EffectivelyNotNull PauseMenu pauseMenu;
     private @EffectivelyNotNull InventoryMenu inventoryMenu;
 
     private float breakingProgress;
@@ -87,6 +89,12 @@ public class EntityPlayer extends Entity
     private void initializeUI()
     {
         inventoryMenu = Menu.create(InventoryMenu.class);
+
+        pauseMenu = Menu.create(PauseMenu.class);
+
+        pauseMenu.setHost(this);
+
+        pauseMenu.setActive(false);
     }
 
     private void updateControls()
@@ -99,7 +107,7 @@ public class EntityPlayer extends Entity
             return;
         }
 
-        if (InputManager.getKeyState(KeyCode.E, KeyState.PRESSED))
+        if (InputManager.getKeyState(KeyCode.E, KeyState.PRESSED) && !pauseMenu.getActive())
         {
             if (!inventoryMenu.getSurvivalMenuActive())
                 InputManager.setMouseMode(MouseMode.FREE);
@@ -111,11 +119,28 @@ public class EntityPlayer extends Entity
 
         if (InputManager.getKeyState(KeyCode.ESCAPE, KeyState.PRESSED))
         {
-            if (InputManager.getMouseMode() == MouseMode.LOCKED)
-                InputManager.setMouseMode(MouseMode.FREE);
-            else
-                InputManager.setMouseMode(MouseMode.LOCKED);
+             if (inventoryMenu.getSurvivalMenuActive())
+             {
+                 inventoryMenu.setSurvivalMenuActive(false);
+                 InputManager.setMouseMode(MouseMode.LOCKED);
+
+                 return;
+             }
+
+             if (pauseMenu.getActive())
+             {
+                 pauseMenu.setActive(false);
+                 InputManager.setMouseMode(MouseMode.LOCKED);
+             }
+             else
+             {
+                 pauseMenu.setActive(true);
+                 InputManager.setMouseMode(MouseMode.FREE);
+             }
         }
+
+        if (inventoryMenu.getSurvivalMenuActive() || inventoryMenu.getCreativeMenuActive() || pauseMenu.getActive())
+            return;
 
         Raycast.VoxelHit hit = Raycast.castVoxel(camera.getGameObject().getTransform().getWorldPosition(), camera.getGameObject().getTransform().getForward(), 4);
 
@@ -226,7 +251,7 @@ public class EntityPlayer extends Entity
 
     private void updateMouselook()
     {
-        if (inventoryMenu.getSurvivalMenuActive() || inventoryMenu.getCreativeMenuActive())
+        if (inventoryMenu.getSurvivalMenuActive() || inventoryMenu.getCreativeMenuActive() || pauseMenu.getActive())
             return;
 
         Vector2f mouseDelta = InputManager.getMouseDelta();
@@ -250,6 +275,9 @@ public class EntityPlayer extends Entity
 
     private void updateMovement()
     {
+        if (inventoryMenu.getSurvivalMenuActive() || inventoryMenu.getCreativeMenuActive() || pauseMenu.getActive())
+            return;
+
         Rigidbody rigidbody = getGameObject().getComponent(Rigidbody.class);
 
         if (rigidbody == null)
@@ -328,5 +356,19 @@ public class EntityPlayer extends Entity
     public @NotNull Camera getCamera()
     {
         return camera;
+    }
+
+    public void setPaused(boolean paused)
+    {
+        if (paused)
+        {
+            pauseMenu.setActive(true);
+            InputManager.setMouseMode(MouseMode.FREE);
+        }
+        else
+        {
+            pauseMenu.setActive(false);
+            InputManager.setMouseMode(MouseMode.LOCKED);
+        }
     }
 }

@@ -71,11 +71,21 @@ public class Shader extends Component implements ManagerLinkedClass
 
     public void setShaderUniform(@NotNull String name, @NotNull Matrix4f value)
     {
-        FloatBuffer buffer = BufferUtils.createFloatBuffer(16);
+        int location = GL41.glGetUniformLocation(program, name);
 
+        if (location == -1)
+            throw new IllegalArgumentException("Uniform '" + name + "' does not exist in the shader program.");
+
+        if (!GL41.glIsProgram(program))
+            throw new IllegalStateException("Shader program is not valid or not initialized.");
+
+        FloatBuffer buffer = BufferUtils.createFloatBuffer(16);
         value.get(buffer);
 
-        GL41.glUniformMatrix4fv(GL41.glGetUniformLocation(program, name), false, buffer);
+        if (buffer.remaining() < 16)
+            throw new IllegalStateException("Buffer does not have enough capacity for the matrix.");
+
+        GL41.glUniformMatrix4fv(location, false, buffer);
     }
 
     public void generate()
