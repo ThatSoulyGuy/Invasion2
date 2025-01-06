@@ -390,36 +390,51 @@ public class GameObject implements Serializable
 
                 List<Component> componentsToInitialize = new ArrayList<>();
 
+                List<Transform> transformComponents = new ArrayList<>();
+                List<ManagerLinkedClass> managerLinkedComponents = new ArrayList<>();
+                List<Component> otherComponents = new ArrayList<>();
+
                 for (int i = 0; i < componentCount; i++)
                 {
                     Object object = objectInputStream.readObject();
 
                     switch (object)
                     {
-                        case Transform component ->
-                        {
-                            System.out.println("Deserialized component '" + component.getClass().getSimpleName() + "'.");
-                            result.addComponent(component);
-                        }
-
-                        case ManagerLinkedClass linkedClass ->
-                        {
-                            Component component = (Component) linkedClass.getManagingClass().getMethod("get", String.class).invoke(null, linkedClass.getManagedItem());
-
-                            System.out.println("Deserialized component '" + component.getClass().getSimpleName() + "'.");
-
-                            result.addComponent(component);
-                        }
-
-                        case Component component ->
-                        {
-                            System.out.println("Deserialized component '" + component.getClass().getSimpleName() + "'.");
-
-                            componentsToInitialize.add(result.addComponent(component, false));
-                        }
-
+                        case Transform transform -> transformComponents.add(transform);
+                        case ManagerLinkedClass linkedClass -> managerLinkedComponents.add(linkedClass);
+                        case Component component -> otherComponents.add(component);
                         case null, default -> System.err.println("Invalid component found during deserialization.");
                     }
+                }
+
+                for (Transform transform : transformComponents)
+                {
+                    System.out.println("Deserialized component '" + transform.getClass().getSimpleName() + "'.");
+                    result.addComponent(transform);
+                }
+
+                for (ManagerLinkedClass linkedClass : managerLinkedComponents)
+                {
+                    try
+                    {
+                        Component component = (Component) linkedClass.getManagingClass()
+                                .getMethod("get", String.class)
+                                .invoke(null, linkedClass.getManagedItem());
+
+                        System.out.println("Deserialized component '" + component.getClass().getSimpleName() + "'.");
+                        result.addComponent(component);
+                    }
+                    catch (Exception e)
+                    {
+                        System.err.println("Failed to deserialize ManagerLinkedClass: " + e.getMessage());
+                        e.printStackTrace();
+                    }
+                }
+
+                for (Component component : otherComponents)
+                {
+                    System.out.println("Deserialized component '" + component.getClass().getSimpleName() + "'.");
+                    componentsToInitialize.add(result.addComponent(component, false));
                 }
 
                 componentsToInitialize.forEach(Component::initialize);

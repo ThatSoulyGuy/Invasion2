@@ -9,6 +9,7 @@ import com.thatsoulyguy.invasion2.collider.handler.CollisionResult;
 import com.thatsoulyguy.invasion2.core.Settings;
 import com.thatsoulyguy.invasion2.core.Time;
 import com.thatsoulyguy.invasion2.core.Window;
+import com.thatsoulyguy.invasion2.crafting.CraftingRecipeRegistry;
 import com.thatsoulyguy.invasion2.entity.Entity;
 import com.thatsoulyguy.invasion2.entity.entities.EntityPlayer;
 import com.thatsoulyguy.invasion2.input.InputManager;
@@ -26,7 +27,12 @@ import com.thatsoulyguy.invasion2.system.GameObjectManager;
 import com.thatsoulyguy.invasion2.system.Layer;
 import com.thatsoulyguy.invasion2.system.LevelManager;
 import com.thatsoulyguy.invasion2.thread.MainThreadExecutor;
+import com.thatsoulyguy.invasion2.ui.Menu;
+import com.thatsoulyguy.invasion2.ui.MenuManager;
 import com.thatsoulyguy.invasion2.ui.UIManager;
+import com.thatsoulyguy.invasion2.ui.menus.CraftingTableMenu;
+import com.thatsoulyguy.invasion2.ui.menus.InventoryMenu;
+import com.thatsoulyguy.invasion2.ui.menus.PauseMenu;
 import com.thatsoulyguy.invasion2.util.AssetPath;
 import com.thatsoulyguy.invasion2.util.FileHelper;
 import com.thatsoulyguy.invasion2.world.TerrainGenerator;
@@ -72,7 +78,7 @@ public class Invasion2
 
         MainThreadExecutor.initialize();
 
-        Window.initialize("Invasion 2* (1.36.10)", windowSize);
+        Window.initialize("Invasion 2* (1.38.10)", windowSize);
 
         DebugRenderer.initialize();
 
@@ -94,10 +100,15 @@ public class Invasion2
         TextureManager.register(Texture.create("ui.button_disabled", Texture.Filter.NEAREST, Texture.Wrapping.REPEAT, AssetPath.create("invasion2", "texture/ui/button_disabled.png")));
         TextureManager.register(Texture.create("ui.button_selected", Texture.Filter.NEAREST, Texture.Wrapping.REPEAT, AssetPath.create("invasion2", "texture/ui/button_selected.png")));
         TextureManager.register(Texture.create("ui.menu.survival_inventory", Texture.Filter.NEAREST, Texture.Wrapping.REPEAT, false, AssetPath.create("invasion2", "texture/ui/menu/inventory_survival.png")));
+        TextureManager.register(Texture.create("ui.menu.crafting_table", Texture.Filter.NEAREST, Texture.Wrapping.REPEAT, false, AssetPath.create("invasion2", "texture/ui/menu/crafting_table.png")));
         TextureManager.register(Texture.create("ui.menu.slot_darken", Texture.Filter.NEAREST, Texture.Wrapping.REPEAT, false, AssetPath.create("invasion2", "texture/ui/menu/slot_darken.png")));
 
         TextureAtlasManager.register(TextureAtlas.create("blocks", AssetPath.create("invasion2", "texture/block/")));
         TextureAtlasManager.register(TextureAtlas.create("items", AssetPath.create("invasion2", "texture/item/")));
+
+        MenuManager.register(Menu.create(CraftingTableMenu.class));
+        MenuManager.register(Menu.create(InventoryMenu.class));
+        MenuManager.register(Menu.create(PauseMenu.class));
 
 
         LevelRenderPass levelRenderPass = new LevelRenderPass();
@@ -136,6 +147,7 @@ public class Invasion2
 
         BlockRegistry.initialize();
         ItemRegistry.initialize();
+        CraftingRecipeRegistry.initialize();
 
         registerCollisionHandlers();
 

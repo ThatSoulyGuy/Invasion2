@@ -244,6 +244,117 @@ public class ItemRegistry
         }
     };
 
+    public static final Item ITEM_OAK_PLANKS_BLOCK = new Item()
+    {
+        @Override
+        public @NotNull String getDisplayName()
+        {
+            return "item_planks_oak";
+        }
+
+        @Override
+        public @NotNull String getRegistryName()
+        {
+            return "Oak Planks";
+        }
+
+        @Override
+        public @NotNull String getTexture()
+        {
+            return "oak_planks";
+        }
+
+        @Override
+        public @NotNull Vector3f getColor()
+        {
+            return new Vector3f(1.0f);
+        }
+
+        @Override
+        public boolean isBlockItem()
+        {
+            return true;
+        }
+
+        @Override
+        public @NotNull Block getAssociatedBlock()
+        {
+            return BlockRegistry.BLOCK_OAK_PLANKS;
+        }
+    };
+
+    public static final Item ITEM_STICK = new Item()
+    {
+        @Override
+        public @NotNull String getDisplayName()
+        {
+            return "item_stick";
+        }
+
+        @Override
+        public @NotNull String getRegistryName()
+        {
+            return "Stick";
+        }
+
+        @Override
+        public @NotNull String getTexture()
+        {
+            return "stick";
+        }
+
+        @Override
+        public @NotNull Vector3f getColor()
+        {
+            return new Vector3f(1.0f);
+        }
+
+        @Override
+        public boolean isBlockItem()
+        {
+            return false;
+        }
+    };
+
+    public static final Item ITEM_CRAFTING_TABLE_BLOCK = new Item()
+    {
+        @Override
+        public @NotNull String getDisplayName()
+        {
+            return "item_crafting_table";
+        }
+
+        @Override
+        public @NotNull String getRegistryName()
+        {
+            return "Crafting Table";
+        }
+
+        @Override
+        public @NotNull String getTexture()
+        {
+            return "crafting_table";
+        }
+
+        @Override
+        public @NotNull Vector3f getColor()
+        {
+            return new Vector3f(1.0f);
+        }
+
+        @Override
+        public boolean isBlockItem()
+        {
+            return true;
+        }
+
+        @Override
+        public @NotNull Block getAssociatedBlock()
+        {
+            return BlockRegistry.BLOCK_CRAFTING_TABLE;
+        }
+    };
+
     private static final ConcurrentMap<String, Item> itemsByName = new ConcurrentHashMap<>();
     private static final ConcurrentMap<Short, Item> itemsById = new ConcurrentHashMap<>();
 
@@ -257,6 +368,9 @@ public class ItemRegistry
         register(ITEM_STONE_BLOCK);
         register(ITEM_LEAVES_BLOCK);
         register(ITEM_LOG_OAK_BLOCK);
+        register(ITEM_OAK_PLANKS_BLOCK);
+        register(ITEM_STICK);
+        register(ITEM_CRAFTING_TABLE_BLOCK);
     }
 
     public static void register(@NotNull Item object)

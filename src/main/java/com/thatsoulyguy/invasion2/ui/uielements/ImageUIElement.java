@@ -1,5 +1,6 @@
 package com.thatsoulyguy.invasion2.ui.uielements;
 
+import com.thatsoulyguy.invasion2.annotation.EffectivelyNotNull;
 import com.thatsoulyguy.invasion2.render.Mesh;
 import com.thatsoulyguy.invasion2.render.ShaderManager;
 import com.thatsoulyguy.invasion2.render.TextureManager;
@@ -11,6 +12,8 @@ import java.util.Objects;
 
 public class ImageUIElement extends UIElement
 {
+    private @EffectivelyNotNull GameObject object;
+
     @Override
     public void generate(@NotNull GameObject object)
     {
@@ -20,5 +23,7 @@ public class ImageUIElement extends UIElement
         object.addComponent(Mesh.create(DEFAULT_VERTICES, DEFAULT_INDICES));
 
         object.getComponentNotNull(Mesh.class).onLoad();
+
+        this.object = object;
     }
 }

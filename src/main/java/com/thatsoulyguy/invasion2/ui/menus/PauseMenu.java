@@ -37,7 +37,7 @@ public class PauseMenu extends Menu
 
             button.setTexture(Objects.requireNonNull(TextureManager.get("ui.button_default")));
 
-            button.addOnClickedEvent(() ->
+            button.addOnLeftClickedEvent(() ->
             {
                 button.setTexture(Objects.requireNonNull(TextureManager.get("ui.button_disabled")));
 
@@ -67,7 +67,7 @@ public class PauseMenu extends Menu
 
             button.setTexture(Objects.requireNonNull(TextureManager.get("ui.button_default")));
 
-            button.addOnClickedEvent(() ->
+            button.addOnLeftClickedEvent(() ->
             {
                 button.setTexture(Objects.requireNonNull(TextureManager.get("ui.button_disabled")));
 
@@ -91,6 +91,12 @@ public class PauseMenu extends Menu
 
             text.setOffset(new Vector2f(0.0f, 10.0f));
         }
+    }
+
+    @Override
+    public @NotNull String getRegistryName()
+    {
+        return "menu_pause";
     }
 
     public void setHost(@NotNull EntityPlayer host)

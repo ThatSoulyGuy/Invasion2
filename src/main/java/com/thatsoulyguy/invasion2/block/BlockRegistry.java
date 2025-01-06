@@ -1,12 +1,22 @@
 package com.thatsoulyguy.invasion2.block;
 
+import com.thatsoulyguy.invasion2.annotation.EffectivelyNotNull;
 import com.thatsoulyguy.invasion2.annotation.Manager;
 import com.thatsoulyguy.invasion2.annotation.Static;
+import com.thatsoulyguy.invasion2.entity.Entity;
+import com.thatsoulyguy.invasion2.entity.entities.EntityPlayer;
 import com.thatsoulyguy.invasion2.item.Item;
 import com.thatsoulyguy.invasion2.item.ItemRegistry;
+import com.thatsoulyguy.invasion2.item.Tool;
+import com.thatsoulyguy.invasion2.ui.Menu;
+import com.thatsoulyguy.invasion2.ui.MenuManager;
+import com.thatsoulyguy.invasion2.ui.menus.CraftingTableMenu;
+import com.thatsoulyguy.invasion2.world.Chunk;
+import com.thatsoulyguy.invasion2.world.World;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
+import org.joml.Vector3i;
 
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -64,6 +74,12 @@ public class BlockRegistry
                 new Vector3f(0.0f),
             };
         }
+
+        @Override
+        public boolean isInteractable()
+        {
+            return false;
+        }
     };
 
     public static final Block BLOCK_GRASS = new Block()
@@ -118,6 +134,12 @@ public class BlockRegistry
                 new Vector3f(1.0f),
                 new Vector3f(1.0f),
             };
+        }
+
+        @Override
+        public boolean isInteractable()
+        {
+            return false;
         }
 
         @Override
@@ -182,6 +204,12 @@ public class BlockRegistry
         }
 
         @Override
+        public boolean isInteractable()
+        {
+            return false;
+        }
+
+        @Override
         public @NotNull Item getAssociatedItem()
         {
             return ItemRegistry.ITEM_DIRT_BLOCK;
@@ -205,7 +233,7 @@ public class BlockRegistry
         @Override
         public float getHardness()
         {
-            return 1.25f;
+            return 4.25f;
         }
 
         @Override
@@ -243,9 +271,21 @@ public class BlockRegistry
         }
 
         @Override
+        public boolean isInteractable()
+        {
+            return false;
+        }
+
+        @Override
         public @NotNull Item getAssociatedItem()
         {
             return ItemRegistry.ITEM_STONE_BLOCK;
+        }
+
+        @Override
+        public @NotNull Tool toolRequired()
+        {
+            return Tool.PICKAXE;
         }
     };
 
@@ -302,6 +342,12 @@ public class BlockRegistry
                 new Vector3f(0.27f, 0.68f, 0.18f),
             };
         }
+
+        @Override
+        public boolean isInteractable()
+        {
+            return false;
+        }
     };
 
     public static final Block BLOCK_LOG_OAK = new Block()
@@ -321,7 +367,7 @@ public class BlockRegistry
         @Override
         public float getHardness()
         {
-            return 0.14f;
+            return 2.84f;
         }
 
         @Override
@@ -359,9 +405,156 @@ public class BlockRegistry
         }
 
         @Override
+        public boolean isInteractable()
+        {
+            return false;
+        }
+
+        @Override
         public @NotNull Item getAssociatedItem()
         {
             return ItemRegistry.ITEM_LOG_OAK_BLOCK;
+        }
+    };
+
+    public static final Block BLOCK_OAK_PLANKS = new Block()
+    {
+        @Override
+        public @NotNull String getDisplayName()
+        {
+            return "block_oak_planks";
+        }
+
+        @Override
+        public @NotNull String getRegistryName()
+        {
+            return "Oak Planks";
+        }
+
+        @Override
+        public float getHardness()
+        {
+            return 2.84f;
+        }
+
+        @Override
+        public float getResistance()
+        {
+            return 0.1f;
+        }
+
+        @Override
+        public @NotNull String[] getTextures()
+        {
+            return new String[]
+            {
+                "planks_oak",
+                "planks_oak",
+                "planks_oak",
+                "planks_oak",
+                "planks_oak",
+                "planks_oak"
+            };
+        }
+
+        @Override
+        public @NotNull Vector3f[] getColors()
+        {
+            return new Vector3f[]
+            {
+                new Vector3f(1.0f),
+                new Vector3f(1.0f),
+                new Vector3f(1.0f),
+                new Vector3f(1.0f),
+                new Vector3f(1.0f),
+                new Vector3f(1.0f),
+            };
+        }
+
+        @Override
+        public boolean isInteractable()
+        {
+            return false;
+        }
+
+        @Override
+        public @NotNull Item getAssociatedItem()
+        {
+            return ItemRegistry.ITEM_OAK_PLANKS_BLOCK;
+        }
+    };
+
+    public static final Block BLOCK_CRAFTING_TABLE = new Block()
+    {
+        @Override
+        public void onInteractedWith(@NotNull Entity interactor, @NotNull World world, @NotNull Chunk chunk, @NotNull Vector3i globalBlockPosition)
+        {
+            if (interactor instanceof EntityPlayer player)
+                player.setCraftingTableMenuActive(!player.isCraftingTableMenuActive());
+        }
+
+        @Override
+        public @NotNull String getDisplayName()
+        {
+            return "block_crafting_table";
+        }
+
+        @Override
+        public @NotNull String getRegistryName()
+        {
+            return "Crafting Table";
+        }
+
+        @Override
+        public float getHardness()
+        {
+            return 2.84f;
+        }
+
+        @Override
+        public float getResistance()
+        {
+            return 0.1f;
+        }
+
+        @Override
+        public @NotNull String[] getTextures()
+        {
+            return new String[]
+            {
+                "crafting_table_top",
+                "planks_oak",
+                "crafting_table_front",
+                "crafting_table_side",
+                "crafting_table_side",
+                "crafting_table_side"
+            };
+        }
+
+        @Override
+        public @NotNull Vector3f[] getColors()
+        {
+            return new Vector3f[]
+            {
+                new Vector3f(1.0f),
+                new Vector3f(1.0f),
+                new Vector3f(1.0f),
+                new Vector3f(1.0f),
+                new Vector3f(1.0f),
+                new Vector3f(1.0f),
+            };
+        }
+
+        @Override
+        public boolean isInteractable()
+        {
+            return true;
+        }
+
+        @Override
+        public @NotNull Item getAssociatedItem()
+        {
+            return ItemRegistry.ITEM_CRAFTING_TABLE_BLOCK;
         }
     };
 
@@ -378,6 +571,8 @@ public class BlockRegistry
         register(BLOCK_STONE);
         register(BLOCK_LEAVES);
         register(BLOCK_LOG_OAK);
+        register(BLOCK_OAK_PLANKS);
+        register(BLOCK_CRAFTING_TABLE);
     }
 
     public static void register(@NotNull Block object)

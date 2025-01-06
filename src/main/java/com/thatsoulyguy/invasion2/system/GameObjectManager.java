@@ -5,6 +5,7 @@ import com.thatsoulyguy.invasion2.annotation.Static;
 import com.thatsoulyguy.invasion2.core.Settings;
 import com.thatsoulyguy.invasion2.render.Camera;
 import com.thatsoulyguy.invasion2.render.DebugRenderer;
+import com.thatsoulyguy.invasion2.render.Mesh;
 import com.thatsoulyguy.invasion2.render.advanced.RenderPassManager;
 import com.thatsoulyguy.invasion2.render.advanced.core.RenderPass;
 import com.thatsoulyguy.invasion2.render.advanced.core.renderpasses.GeometryRenderPass;
@@ -13,6 +14,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.opengl.GL41;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.*;
@@ -134,6 +136,9 @@ public class GameObjectManager
 
     public static void renderDefault(@Nullable Camera camera)
     {
+        if (camera == null)
+            return;
+
         if (Settings.USE_ADVANCED_RENDERING_FEATURES.getValue())
         {
             GeometryRenderPass geometryRenderPass = null;
@@ -144,7 +149,25 @@ public class GameObjectManager
             if (geometryRenderPass != null)
                 geometryRenderPass.render(camera);
 
+            List<GameObject> transparentGameObjects = new ArrayList<>();
+
             for (GameObject gameObject : gameObjectMap.values())
+            {
+                if (gameObject.hasComponent(Mesh.class) && gameObject.getComponentNotNull(Mesh.class).isTransparent())
+                    transparentGameObjects.add(gameObject);
+                else
+                    gameObject.renderDefault(camera);
+            }
+
+            transparentGameObjects.sort((aObject, bObject) ->
+            {
+                float dist1 = aObject.getTransform().getWorldPosition().distanceSquared(camera.getGameObject().getTransform().getWorldPosition());
+                float dist2 = bObject.getTransform().getWorldPosition().distanceSquared(camera.getGameObject().getTransform().getWorldPosition());
+
+                return Float.compare(dist1, dist2);
+            });
+
+            for (GameObject gameObject : transparentGameObjects)
                 gameObject.renderDefault(camera);
 
             if (geometryRenderPass != null)

@@ -1,12 +1,17 @@
 package com.thatsoulyguy.invasion2.ui;
 
+import com.thatsoulyguy.invasion2.annotation.EffectivelyNotNull;
 import org.jetbrains.annotations.NotNull;
 
-public abstract class Menu
+import java.io.Serializable;
+
+public abstract class Menu implements Serializable, Cloneable
 {
     protected Menu() { }
 
     public abstract void initialize();
+
+    public abstract @NotNull String getRegistryName();
 
     public void update() { }
 
@@ -14,17 +19,26 @@ public abstract class Menu
     {
         try
         {
-            T result = clazz.getDeclaredConstructor().newInstance();
-
-            result.initialize();
-
-            return result;
+            return clazz.getDeclaredConstructor().newInstance();
         }
         catch (Exception e)
         {
             System.err.println("Missing constructor from Menu! This shouldn't happen!");
 
             return clazz.cast(new Object());
+        }
+    }
+
+    @Override
+    public Menu clone()
+    {
+        try
+        {
+            return (Menu) super.clone();
+        }
+        catch (CloneNotSupportedException e)
+        {
+            throw new AssertionError();
         }
     }
 }

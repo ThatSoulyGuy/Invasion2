@@ -8,10 +8,13 @@ import com.thatsoulyguy.invasion2.system.Layer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import javax.swing.*;
 import java.io.*;
 import java.lang.reflect.Field;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @CustomConstructor("create")
 public class UIPanel implements Serializable
@@ -131,7 +134,7 @@ public class UIPanel implements Serializable
 
                 GameObject gameObject = GameObject.load(new File(uiElementsDirectory, "ui." + element.getName() + ".bin"));
 
-                Field field = element.getClass().getDeclaredField("object");
+                Field field = element.getClass().getSuperclass().getDeclaredField("object");
 
                 field.setAccessible(true);
 
@@ -149,6 +152,17 @@ public class UIPanel implements Serializable
         catch (Exception exception)
         {
             System.err.println("Failed to deserialize ui! " + exception.getMessage());
+
+            String stackTrace = Arrays.stream(exception.getStackTrace())
+                    .map(StackTraceElement::toString)
+                    .collect(Collectors.joining("\n"));
+
+            JOptionPane.showMessageDialog(
+                    null,
+                    exception.getMessage() + "\n\n" + stackTrace,
+                    "Exception!",
+                    JOptionPane.ERROR_MESSAGE
+            );
         }
 
         return result;

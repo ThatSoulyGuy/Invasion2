@@ -1,5 +1,6 @@
 package com.thatsoulyguy.invasion2.ui.uielements;
 
+import com.thatsoulyguy.invasion2.annotation.EffectivelyNotNull;
 import com.thatsoulyguy.invasion2.input.InputManager;
 import com.thatsoulyguy.invasion2.input.MouseCode;
 import com.thatsoulyguy.invasion2.input.MouseState;
@@ -8,6 +9,7 @@ import com.thatsoulyguy.invasion2.render.ShaderManager;
 import com.thatsoulyguy.invasion2.render.TextureManager;
 import com.thatsoulyguy.invasion2.system.GameObject;
 import com.thatsoulyguy.invasion2.ui.UIElement;
+import com.thatsoulyguy.invasion2.util.SerializableRunnable;
 import org.jetbrains.annotations.NotNull;
 import org.joml.Vector2f;
 
@@ -17,11 +19,12 @@ import java.util.Objects;
 
 public class ButtonUIElement extends UIElement
 {
-    private final @NotNull List<Runnable> onClicked = new ArrayList<>();
-    private final @NotNull List<Runnable> onReleased = new ArrayList<>();
-    private final @NotNull List<Runnable> onHoveringBegin = new ArrayList<>();
-    private final @NotNull List<Runnable> onHovering = new ArrayList<>();
-    private final @NotNull List<Runnable> onHoveringEnd = new ArrayList<>();
+    private final @NotNull List<SerializableRunnable> onLeftClicked = new ArrayList<>();
+    private final @NotNull List<SerializableRunnable> onRightClicked = new ArrayList<>();
+    private final @NotNull List<SerializableRunnable> onReleased = new ArrayList<>();
+    private final @NotNull List<SerializableRunnable> onHoveringBegin = new ArrayList<>();
+    private final @NotNull List<SerializableRunnable> onHovering = new ArrayList<>();
+    private final @NotNull List<SerializableRunnable> onHoveringEnd = new ArrayList<>();
 
     private boolean wasMouseHeld;
     private boolean wasHovering;
@@ -36,37 +39,44 @@ public class ButtonUIElement extends UIElement
         Vector2f mousePosition = InputManager.getMousePosition();
 
         boolean isOver = isMouseOver(position, dimensions, mousePosition);
-        boolean isMousePressed = InputManager.getMouseState(MouseCode.MOUSE_LEFT, MouseState.PRESSED);
-        boolean isMouseReleased = InputManager.getMouseState(MouseCode.MOUSE_LEFT, MouseState.RELEASED);
+        boolean isMouseLeftClicked = InputManager.getMouseState(MouseCode.MOUSE_LEFT, MouseState.PRESSED);
+        boolean isMouseRightClicked = InputManager.getMouseState(MouseCode.MOUSE_RIGHT, MouseState.PRESSED);
+        boolean isMouseReleased = InputManager.getMouseState(MouseCode.MOUSE_LEFT, MouseState.RELEASED) || InputManager.getMouseState(MouseCode.MOUSE_RIGHT, MouseState.RELEASED);
 
         if (isOver && !wasHovering)
         {
-            onHoveringBegin.forEach(Runnable::run);
+            onHoveringBegin.forEach(SerializableRunnable::run);
             wasHovering = true;
         }
 
         if (isOver)
-            onHovering.forEach(Runnable::run);
+            onHovering.forEach(SerializableRunnable::run);
 
         if (!isOver && wasHovering)
         {
-            onHoveringEnd.forEach(Runnable::run);
+            onHoveringEnd.forEach(SerializableRunnable::run);
             wasHovering = false;
         }
 
-        if (isOver && isMousePressed)
+        if (isOver && isMouseLeftClicked)
         {
-            onClicked.forEach(Runnable::run);
+            onLeftClicked.forEach(SerializableRunnable::run);
+            wasMouseHeld = true;
+        }
+
+        if (isOver && isMouseRightClicked)
+        {
+            onRightClicked.forEach(SerializableRunnable::run);
             wasMouseHeld = true;
         }
 
         if (isOver && isMouseReleased && wasMouseHeld)
         {
-            onReleased.forEach(Runnable::run);
+            onReleased.forEach(SerializableRunnable::run);
             wasMouseHeld = false;
         }
 
-        if (!isMousePressed)
+        if (!isMouseLeftClicked)
             wasMouseHeld = false;
     }
 
@@ -82,52 +92,62 @@ public class ButtonUIElement extends UIElement
         object.getComponentNotNull(Mesh.class).onLoad();
     }
 
-    public void addOnClickedEvent(@NotNull Runnable runnable)
+    public void addOnLeftClickedEvent(@NotNull SerializableRunnable runnable)
     {
-        onClicked.add(runnable);
+        onLeftClicked.add(runnable);
     }
 
-    public void removeOnClickedEvent(@NotNull Runnable runnable)
+    public void removeOnLeftClickedEvent(@NotNull SerializableRunnable runnable)
     {
-        onClicked.remove(runnable);
+        onLeftClicked.remove(runnable);
     }
 
-    public void addOnReleasedEvent(@NotNull Runnable runnable)
+    public void addOnRightClickedEvent(@NotNull SerializableRunnable runnable)
+    {
+        onRightClicked.add(runnable);
+    }
+
+    public void removeOnRightClickedEvent(@NotNull SerializableRunnable runnable)
+    {
+        onRightClicked.remove(runnable);
+    }
+
+    public void addOnReleasedEvent(@NotNull SerializableRunnable runnable)
     {
         onReleased.add(runnable);
     }
 
-    public void removeOnReleasedEvent(@NotNull Runnable runnable)
+    public void removeOnReleasedEvent(@NotNull SerializableRunnable runnable)
     {
         onReleased.remove(runnable);
     }
 
-    public void addOnHoveringBeginEvent(@NotNull Runnable runnable)
+    public void addOnHoveringBeginEvent(@NotNull SerializableRunnable runnable)
     {
         onHoveringBegin.add(runnable);
     }
 
-    public void removeOnHoveringBeginEvent(@NotNull Runnable runnable)
+    public void removeOnHoveringBeginEvent(@NotNull SerializableRunnable runnable)
     {
         onHoveringBegin.remove(runnable);
     }
 
-    public void addOnHoveringEvent(@NotNull Runnable runnable)
+    public void addOnHoveringEvent(@NotNull SerializableRunnable runnable)
     {
         onHovering.add(runnable);
     }
 
-    public void removeOnHoveringEvent(@NotNull Runnable runnable)
+    public void removeOnHoveringEvent(@NotNull SerializableRunnable runnable)
     {
         onHovering.remove(runnable);
     }
 
-    public void addOnHoveringEndEvent(@NotNull Runnable runnable)
+    public void addOnHoveringEndEvent(@NotNull SerializableRunnable runnable)
     {
         onHoveringEnd.add(runnable);
     }
 
-    public void removeOnHoveringEndEvent(@NotNull Runnable runnable)
+    public void removeOnHoveringEndEvent(@NotNull SerializableRunnable runnable)
     {
         onHoveringEnd.remove(runnable);
     }
